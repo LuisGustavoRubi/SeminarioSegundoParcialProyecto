@@ -51,7 +51,7 @@ services:
   
   # para levantar es con 
   # docker-compose up -d
-  # ocker compose up -d adminer
+  # docker compose up -d adminer
   # sistema en http://localhost:8080/
   # adminer en http://localhost:8081/
 
