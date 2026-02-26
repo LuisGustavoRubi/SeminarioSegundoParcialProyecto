@@ -1,0 +1,5 @@
+
+# Sistema De Gestion De Citas Medicas Usando PHP y MYSQL
+
+## Descripción
+Este proyecto es un sistema web hecho por nosotros, el Grupo #1, para gestionar citas médicas en centros de salud pequeños usando PHP y MySQL, con HTML, CSS, JavaScript y Bootstrap para que se vea bien en cualquier dispositivo. La idea es poder registrar pacientes y médicos, agendar, editar o cancelar citas, evitando duplicados y con un dashboard simple que muestra estadísticas básicas. Incluye validaciones para que no se repitan cédulas ni citas, y trae datos de prueba para probar todo al instante. Lo hicimos pensando en que sea fácil de instalar en XAMPP o WAMP, solo copiando la carpeta, importando la base de datos y configurando el usuario si hace falta. También usamos SweetAlert2 para los mensajes bonitos y todo el sistema es responsive. Este proyecto nos ayudó a practicar CRUD, validaciones, bases de datos relacionales, consultas SQL y desarrollo web básico, y aunque ahora es simple, le dejamos espacio para mejoras como login, filtros, reportes o recordatorios por correo. Básicamente, es funcional, entendible y listo para presentar como nuestro trabajo práctico.
