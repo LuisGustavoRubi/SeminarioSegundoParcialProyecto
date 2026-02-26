@@ -1,0 +1,73 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: citas_web
+    environment:
+      DB_HOST: db
+      DB_USER: usuario
+      DB_PASS: usuariopass
+      DB_NAME: citas_medicas
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/var/www/html
+    depends_on:
+      - db
+    networks:
+      - citasnet
+
+  db:
+    image: mysql:8.0
+    container_name: citas_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: citas_medicas
+      MYSQL_USER: usuario
+      MYSQL_PASSWORD: usuariopass
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./database.sql:/docker-entrypoint-initdb.d/database.sql
+    networks:
+      - citasnet
+
+  # phpmyadmin:
+  #   image: phpmyadmin:latest
+  #   container_name: citas_phpmyadmin
+  #   restart: always
+  #   depends_on:
+  #     - db
+  #   environment:
+  #     PMA_HOST: db
+  #     PMA_PORT: 3306
+  #     PMA_USER: usuario
+  #     PMA_PASSWORD: usuariopass
+  #   ports:
+  #     - "8081:80"
+  #   networks:
+  #     - citasnet
+  
+  # para levantar es con 
+  # docker-compose up -d
+  # ocker compose up -d adminer
+  # sistema en http://localhost:8080/
+  # adminer en http://localhost:8081/
+
+  adminer:
+    image: adminer:latest
+    container_name: citas_adminer
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - "8081:8080"
+    networks:
+      - citasnet
+
+networks:
+  citasnet:
+
+volumes:
+  db_data:
