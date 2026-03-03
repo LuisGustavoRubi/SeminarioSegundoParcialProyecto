@@ -195,7 +195,7 @@ include '../includes/header.php';
                             <?php while ($p = $pacientes->fetch_assoc()): ?>
                             <tr>
                                 <td><strong><?php echo $p['cedula']; ?></strong></td>
-                                <td><?php echo $p['nombre'] . ' ' . $p['apellido']; ?></td>
+                                <td><?php echo normalizar_texto($p['nombre']) . ' ' . normalizar_texto($p['apellido']); ?></td>
                                 <td><?php echo $p['telefono'] ?: '-'; ?></td>
                                 <td><?php echo $p['email'] ?: '-'; ?></td>
                                 <td><?php echo $p['fecha_nacimiento'] ? date('d/m/Y', strtotime($p['fecha_nacimiento'])) : '-'; ?></td>
@@ -205,7 +205,7 @@ include '../includes/header.php';
                                             <i class="bi bi-pencil"></i>
                                         </a>
                                         <button type="button" class="btn btn-outline-danger" 
-                                                onclick="confirmarEliminacion(<?php echo $p['id']; ?>, '<?php echo $p['nombre'] . ' ' . $p['apellido']; ?>', 'al paciente')" 
+                                                onclick="confirmarEliminacion(<?php echo $p['id']; ?>, '<?php echo htmlspecialchars(normalizar_texto($p['nombre']) . ' ' . normalizar_texto($p['apellido']), ENT_QUOTES, 'UTF-8'); ?>', 'al paciente')" 
                                                 title="Eliminar">
                                             <i class="bi bi-trash"></i>
                                         </button>

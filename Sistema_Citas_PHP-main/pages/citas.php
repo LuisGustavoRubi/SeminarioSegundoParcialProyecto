@@ -121,7 +121,7 @@ include '../includes/header.php';
                                     <?php while ($p = $pacientes->fetch_assoc()): ?>
                                     <option value="<?php echo $p['id']; ?>" 
                                             <?php echo ($cita && $cita['paciente_id'] == $p['id']) ? 'selected' : ''; ?>>
-                                        <?php echo $p['nombre'] . ' ' . $p['apellido'] . ' - ' . $p['cedula']; ?>
+                                        <?php echo normalizar_texto($p['nombre']) . ' ' . normalizar_texto($p['apellido']) . ' - ' . $p['cedula']; ?>
                                     </option>
                                     <?php endwhile; ?>
                                 </select>
@@ -133,7 +133,7 @@ include '../includes/header.php';
                                     <?php while ($m = $medicos->fetch_assoc()): ?>
                                     <option value="<?php echo $m['id']; ?>" 
                                             <?php echo ($cita && $cita['medico_id'] == $m['id']) ? 'selected' : ''; ?>>
-                                        Dr. <?php echo $m['nombre'] . ' ' . $m['apellido'] . ' - ' . $m['especialidad']; ?>
+                                        Dr. <?php echo normalizar_texto($m['nombre']) . ' ' . normalizar_texto($m['apellido']) . ' - ' . normalizar_texto($m['especialidad']); ?>
                                     </option>
                                     <?php endwhile; ?>
                                 </select>
@@ -229,9 +229,9 @@ include '../includes/header.php';
                             <tr>
                                 <td><strong><?php echo date('d/m/Y', strtotime($c['fecha'])); ?></strong></td>
                                 <td><?php echo date('H:i', strtotime($c['hora'])); ?></td>
-                                <td><?php echo $c['paciente_nombre']; ?></td>
-                                <td>Dr. <?php echo $c['medico_nombre']; ?></td>
-                                <td><span class="badge bg-info text-dark"><?php echo $c['especialidad']; ?></span></td>
+                                <td><?php echo normalizar_texto($c['paciente_nombre']); ?></td>
+                                <td>Dr. <?php echo normalizar_texto($c['medico_nombre']); ?></td>
+                                <td><span class="badge bg-info text-dark"><?php echo normalizar_texto($c['especialidad']); ?></span></td>
                                 <td><?php echo substr($c['motivo'], 0, 40); ?><?php echo strlen($c['motivo']) > 40 ? '...' : ''; ?></td>
                                 <td>
                                     <?php if ($c['estado'] == 'pendiente'): ?>

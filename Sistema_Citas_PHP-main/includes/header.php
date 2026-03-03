@@ -73,28 +73,28 @@
                     
                     <ul class="nav flex-column">
                         <li class="nav-item">
-                            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'index.php' ? 'active' : ''; ?>" 
+                            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'index.php' ? 'active' : ''; ?> rounded" 
                                href="<?php echo basename($_SERVER['PHP_SELF']) == 'index.php' ? '#' : '../index.php'; ?>">
                                 <i class="bi bi-house-door"></i>
                                 Inicio
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'pacientes.php' ? 'active' : ''; ?>" 
+                            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'pacientes.php' ? 'active' : ''; ?> rounded" 
                                href="<?php echo basename($_SERVER['PHP_SELF']) == 'pacientes.php' ? '#' : (basename($_SERVER['PHP_SELF']) == 'index.php' ? 'pages/pacientes.php' : 'pacientes.php'); ?>">
                                 <i class="bi bi-person"></i>
                                 Pacientes
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'medicos.php' ? 'active' : ''; ?>" 
+                            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'medicos.php' ? 'active' : ''; ?> rounded" 
                                href="<?php echo basename($_SERVER['PHP_SELF']) == 'medicos.php' ? '#' : (basename($_SERVER['PHP_SELF']) == 'index.php' ? 'pages/medicos.php' : 'medicos.php'); ?>">
                                 <i class="bi bi-person-badge"></i>
                                 Médicos
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'citas.php' ? 'active' : ''; ?>" 
+                            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'citas.php' ? 'active' : ''; ?> rounded" 
                                href="<?php echo basename($_SERVER['PHP_SELF']) == 'citas.php' ? '#' : (basename($_SERVER['PHP_SELF']) == 'index.php' ? 'pages/citas.php' : 'citas.php'); ?>">
                                 <i class="bi bi-calendar-check"></i>
                                 Citas

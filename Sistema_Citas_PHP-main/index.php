@@ -78,19 +78,19 @@ include 'includes/header.php';
             </div>
             <div class="card-body">
                 <div class="row text-center">
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-4 mb-1">
                         <a href="pages/citas.php?action=new" class="btn btn-outline-primary btn-lg w-100">
                             <i class="bi bi-calendar-plus"></i><br>
                             Agendar Cita
                         </a>
                     </div>
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-4 mb-1">
                         <a href="pages/pacientes.php?action=new" class="btn btn-outline-success btn-lg w-100">
                             <i class="bi bi-person-plus"></i><br>
                             Nuevo Paciente
                         </a>
                     </div>
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-4 mb-1">
                         <a href="pages/medicos.php?action=new" class="btn btn-outline-info btn-lg w-100">
                             <i class="bi bi-person-badge"></i><br>
                             Nuevo Médico
@@ -126,8 +126,8 @@ include 'includes/header.php';
                                 <?php while ($cita = $citas_hoy->fetch_assoc()): ?>
                                 <tr>
                                     <td><strong><?php echo date('H:i', strtotime($cita['hora'])); ?></strong></td>
-                                    <td><?php echo $cita['paciente_nombre']; ?></td>
-                                    <td>Dr. <?php echo $cita['medico_nombre']; ?></td>
+                                    <td><?php echo normalizar_texto($cita['paciente_nombre']); ?></td>
+                                    <td>Dr. <?php echo normalizar_texto($cita['medico_nombre']); ?></td>
                                     <td><?php echo substr($cita['motivo'], 0, 50); ?><?php echo strlen($cita['motivo']) > 50 ? '...' : ''; ?></td>
                                     <td>
                                         <?php if ($cita['estado'] == 'pendiente'): ?>
