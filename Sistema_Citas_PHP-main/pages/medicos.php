@@ -1,66 +1,32 @@
 <?php
-session_start();
 require_once '../includes/config.php';
+require_once '../controllers/MedicosController.php';
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    if (isset($_POST['action'])) {
-        $nombre = $_POST['nombre'];
-        $apellido = $_POST['apellido'];
-        $especialidad = $_POST['especialidad'];
-        $telefono = $_POST['telefono'];
-        $email = $_POST['email'];
-        
-        if ($_POST['action'] == 'create') {
-            $sql = "INSERT INTO medicos (nombre, apellido, especialidad, telefono, email) 
-                    VALUES ('$nombre', '$apellido', '$especialidad', '$telefono', '$email')";
-            if ($conn->query($sql)) {
-                $_SESSION['success'] = "Médico registrado exitosamente";
-                header("Location: medicos.php");
-                exit();
-            } else {
-                $_SESSION['error'] = "Error al registrar médico";
-            }
-        } elseif ($_POST['action'] == 'update') {
-            $id = $_POST['id'];
-            $sql = "UPDATE medicos SET nombre='$nombre', apellido='$apellido', especialidad='$especialidad', 
-                    telefono='$telefono', email='$email' WHERE id=$id";
-            if ($conn->query($sql)) {
-                $_SESSION['success'] = "Médico actualizado exitosamente";
-                header("Location: medicos.php");
-                exit();
-            } else {
-                $_SESSION['error'] = "Error al actualizar médico";
-            }
-        }
-    }
-}
-
-if (isset($_GET['action']) && $_GET['action'] == 'delete' && isset($_GET['id'])) {
-    $id = $_GET['id'];
-    if ($conn->query("DELETE FROM medicos WHERE id=$id")) {
-        $_SESSION['success'] = "Médico eliminado exitosamente";
-    } else {
-        $_SESSION['error'] = "Error al eliminar médico";
-    }
-    header("Location: medicos.php");
-    exit();
-}
+$controller = new MedicoController($conn);
+$controller->handleRequest();
 
 $medico = null;
+$mostrar_formulario = false;
+
+// Verificar acciones
 if (isset($_GET['action']) && $_GET['action'] == 'edit' && isset($_GET['id'])) {
-    $id = $_GET['id'];
-    $result = $conn->query("SELECT * FROM medicos WHERE id=$id");
-    $medico = $result->fetch_assoc();
+    $medico = $controller->obtenerPorId($_GET['id']);
+    $mostrar_formulario = true;
 }
 
-$mostrar_formulario = isset($_GET['action']) && ($_GET['action'] == 'new' || $_GET['action'] == 'edit');
-
-if ($mostrar_formulario) {
-    $page_title = $medico ? "Editar Médico" : "Nuevo Médico";
-} else {
-    $page_title = "Gestión de Médicos";
-    $medicos = $conn->query("SELECT * FROM medicos ORDER BY apellido, nombre");
+if (isset($_GET['action']) && $_GET['action'] == 'new') {
+    $mostrar_formulario = true;
 }
+
+if (!$mostrar_formulario) {
+    $medicos = $controller->obtenerTodos();
+}
+
+// AHORA sí puedes usarla
+$current_page = 'medicos';
+$page_title = $mostrar_formulario 
+    ? ($medico ? "Editar Médico" : "Nuevo Médico")
+    : "Gestión de Médicos";
 
 include '../includes/header.php';
 ?>

@@ -87,7 +87,7 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'medicos.php' ? 'active' : ''; ?> rounded" 
+                            <a class="nav-link <?php echo isset($current_page) && $current_page == 'medicos' ? 'active' : ''; ?> rounded" 
                                href="<?php echo basename($_SERVER['PHP_SELF']) == 'medicos.php' ? '#' : (basename($_SERVER['PHP_SELF']) == 'index.php' ? 'pages/medicos.php' : 'medicos.php'); ?>">
                                 <i class="bi bi-person-badge"></i>
                                 Médicos
