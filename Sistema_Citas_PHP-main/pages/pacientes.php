@@ -155,7 +155,7 @@ include '../includes/header.php';
                                 <td><?php echo $p['fecha_nacimiento'] ? date('d/m/Y', strtotime($p['fecha_nacimiento'])) : '-'; ?></td>
                                 <td>
                                     <div class="btn-group btn-group-sm" role="group">
-                                        <a href="../controllers/pacientes_controller.php?action=edit&id=<?php echo (int) $p['id']; ?>"
+                                        <a href="../controllers/pacientesController.php?action=edit&id=<?php echo (int) $p['id']; ?>"
                                            class="btn btn-outline-primary" title="Editar">
                                             <i class="bi bi-pencil"></i>
                                         </a>
@@ -167,7 +167,7 @@ include '../includes/header.php';
                                                         ENT_QUOTES, 'UTF-8'
                                                     ); ?>',
                                                     'al paciente',
-                                                    '../controllers/pacientes_controller.php'
+                                                    '../controllers/pacientesController.php'
                                                 )"
                                                 title="Eliminar">
                                             <i class="bi bi-trash"></i>
@@ -183,7 +183,7 @@ include '../includes/header.php';
                 <div class="text-center text-muted py-5">
                     <i class="bi bi-inbox" style="font-size: 4rem;"></i>
                     <p class="mt-3">No hay pacientes registrados</p>
-                    <a href="../controllers/pacientes_controller.php?action=new" class="btn btn-primary">
+                    <a href="../controllers/pacientesController.php?action=new" class="btn btn-primary">
                         <i class="bi bi-person-plus"></i> Registrar Primer Paciente
                     </a>
                 </div>
