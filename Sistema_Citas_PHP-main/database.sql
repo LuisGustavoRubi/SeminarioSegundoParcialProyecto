@@ -42,6 +42,49 @@ CREATE TABLE IF NOT EXISTS citas (
         ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS citas_historial (
+    id                  INT AUTO_INCREMENT PRIMARY KEY,
+    cita_id             INT NOT NULL,
+    tipo_cambio         ENUM('modificacion', 'cancelacion', 'reprogramacion') NOT NULL,
+    observacion         TEXT,
+
+    -- Estado anterior
+    anterior_paciente_id INT,
+    anterior_medico_id   INT,
+    anterior_fecha       DATE NOT NULL,
+    anterior_hora        TIME NOT NULL,
+    anterior_motivo      TEXT,
+    anterior_estado      ENUM('pendiente', 'completada', 'cancelada') NOT NULL,
+
+    -- Estado nuevo
+    nuevo_paciente_id    INT,
+    nuevo_medico_id      INT,
+    nuevo_fecha          DATE NOT NULL,
+    nuevo_hora           TIME NOT NULL,
+    nuevo_motivo         TEXT,
+    nuevo_estado         ENUM('pendiente', 'completada', 'cancelada') NOT NULL,
+
+    -- Auditoría
+    fecha_cambio         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_historial_cita
+        FOREIGN KEY (cita_id) REFERENCES citas(id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_historial_ant_paciente
+        FOREIGN KEY (anterior_paciente_id) REFERENCES pacientes(id)
+        ON DELETE SET NULL,
+    CONSTRAINT fk_historial_ant_medico
+        FOREIGN KEY (anterior_medico_id) REFERENCES medicos(id)
+        ON DELETE SET NULL,
+    CONSTRAINT fk_historial_nvo_paciente
+        FOREIGN KEY (nuevo_paciente_id) REFERENCES pacientes(id)
+        ON DELETE SET NULL,
+    CONSTRAINT fk_historial_nvo_medico
+        FOREIGN KEY (nuevo_medico_id) REFERENCES medicos(id)
+        ON DELETE SET NULL
+
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 INSERT INTO pacientes (nombre, apellido, cedula, telefono, email, fecha_nacimiento) VALUES
 ('María', 'González', '0801-1990-12345', '+504 9876-5432', 'maria.gonzalez@email.com', '1990-05-15'),
 ('Carlos', 'Martínez', '0801-1985-54321', '+504 9876-5433', 'carlos.martinez@email.com', '1985-08-20'),
