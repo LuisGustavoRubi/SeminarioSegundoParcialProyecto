@@ -79,7 +79,7 @@ include 'includes/header.php';
             <div class="card-body">
                 <div class="row text-center">
                     <div class="col-md-4 mb-1">
-                        <a href="pages/citas.php?action=new" class="btn btn-outline-primary btn-lg w-100">
+                        <a href="controllers/citas.php?action=new" class="btn btn-outline-primary btn-lg w-100">
                             <i class="bi bi-calendar-plus"></i><br>
                             Agendar Cita
                         </a>
