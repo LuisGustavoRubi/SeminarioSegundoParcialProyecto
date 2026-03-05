@@ -80,7 +80,7 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'pacientes.php' ? 'active' : ''; ?> rounded" 
+                            <a class="nav-link <?php echo isset($current_page) && $current_page == 'pacientes' ? 'active' : ''; ?> rounded" 
                                href="<?php echo basename($_SERVER['PHP_SELF']) == 'pacientes.php' ? '#' : (basename($_SERVER['PHP_SELF']) == 'index.php' ? 'pages/pacientes.php' : 'pacientes.php'); ?>">
                                 <i class="bi bi-person"></i>
                                 Pacientes
@@ -94,7 +94,7 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'citas.php' ? 'active' : ''; ?> rounded" 
+                            <a class="nav-link <?php echo isset($current_page) && $current_page == 'citas' ? 'active' : ''; ?> rounded" 
                                href="<?php echo basename($_SERVER['PHP_SELF']) == 'citas.php' ? '#' : (basename($_SERVER['PHP_SELF']) == 'index.php' ? 'pages/citas.php' : 'citas.php'); ?>">
                                 <i class="bi bi-calendar-check"></i>
                                 Citas

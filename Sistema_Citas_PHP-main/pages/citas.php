@@ -1,100 +1,33 @@
 <?php
-session_start();
 require_once '../includes/config.php';
+require_once '../controllers/CitasController.php';
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    if (isset($_POST['action'])) {
-        $paciente_id = $_POST['paciente_id'];
-        $medico_id = $_POST['medico_id'];
-        $fecha = $_POST['fecha'];
-        $hora = $_POST['hora'];
-        $motivo = $_POST['motivo'];
-        $estado = isset($_POST['estado']) ? $_POST['estado'] : 'pendiente';
-        
-        if ($_POST['action'] == 'create') {
-            $check = $conn->query("SELECT id FROM citas WHERE medico_id=$medico_id AND fecha='$fecha' 
-                                  AND hora='$hora' AND estado != 'cancelada'");
-            if ($check->num_rows > 0) {
-                $_SESSION['error'] = "Ya existe una cita para este médico en la fecha y hora seleccionadas";
-            } else {
-                $sql = "INSERT INTO citas (paciente_id, medico_id, fecha, hora, motivo, estado) 
-                        VALUES ($paciente_id, $medico_id, '$fecha', '$hora', '$motivo', '$estado')";
-                if ($conn->query($sql)) {
-                    $_SESSION['success'] = "Cita agendada exitosamente";
-                    header("Location: citas.php");
-                    exit();
-                } else {
-                    $_SESSION['error'] = "Error al agendar cita";
-                }
-            }
-        } elseif ($_POST['action'] == 'update') {
-            $id = $_POST['id'];
-            $check = $conn->query("SELECT id FROM citas WHERE medico_id=$medico_id AND fecha='$fecha' 
-                                  AND hora='$hora' AND estado != 'cancelada' AND id != $id");
-            if ($check->num_rows > 0) {
-                $_SESSION['error'] = "Ya existe una cita para este médico en la fecha y hora seleccionadas";
-            } else {
-                $sql = "UPDATE citas SET paciente_id=$paciente_id, medico_id=$medico_id, fecha='$fecha', 
-                        hora='$hora', motivo='$motivo', estado='$estado' WHERE id=$id";
-                if ($conn->query($sql)) {
-                    $_SESSION['success'] = "Cita actualizada exitosamente";
-                    header("Location: citas.php");
-                    exit();
-                } else {
-                    $_SESSION['error'] = "Error al actualizar cita";
-                }
-            }
-        }
-    }
-}
-
-if (isset($_GET['action']) && $_GET['action'] == 'cancel' && isset($_GET['id'])) {
-    $id = $_GET['id'];
-    if ($conn->query("UPDATE citas SET estado='cancelada' WHERE id=$id")) {
-        $_SESSION['success'] = "Cita cancelada exitosamente";
-    } else {
-        $_SESSION['error'] = "Error al cancelar cita";
-    }
-    header("Location: citas.php");
-    exit();
-}
-
-if (isset($_GET['action']) && $_GET['action'] == 'delete' && isset($_GET['id'])) {
-    $id = $_GET['id'];
-    if ($conn->query("DELETE FROM citas WHERE id=$id")) {
-        $_SESSION['success'] = "Cita eliminada exitosamente";
-    } else {
-        $_SESSION['error'] = "Error al eliminar cita";
-    }
-    header("Location: citas.php");
-    exit();
-}
+$controller = new CitasController($conn);
+$controller->handleRequest();
 
 $cita = null;
+$mostrar_formulario = false;
+
 if (isset($_GET['action']) && $_GET['action'] == 'edit' && isset($_GET['id'])) {
-    $id = $_GET['id'];
-    $result = $conn->query("SELECT * FROM citas WHERE id=$id");
-    $cita = $result->fetch_assoc();
+    $cita = $controller->obtenerPorId($_GET['id']);
+    $mostrar_formulario = true;
 }
 
-$mostrar_formulario = isset($_GET['action']) && ($_GET['action'] == 'new' || $_GET['action'] == 'edit');
+if (isset($_GET['action']) && $_GET['action'] == 'new') {
+    $mostrar_formulario = true;
+}
 
 if ($mostrar_formulario) {
-    $page_title = $cita ? "Editar Cita" : "Nueva Cita";
-    $pacientes = $conn->query("SELECT * FROM pacientes ORDER BY apellido, nombre");
-    $medicos = $conn->query("SELECT * FROM medicos ORDER BY apellido, nombre");
+    $pacientes = $controller->obtenerPacientes();
+    $medicos = $controller->obtenerMedicos();
 } else {
-    $page_title = "Gestión de Citas";
-    $sql = "SELECT c.*, 
-            CONCAT(p.nombre, ' ', p.apellido) as paciente_nombre,
-            CONCAT(m.nombre, ' ', m.apellido) as medico_nombre,
-            m.especialidad
-            FROM citas c
-            INNER JOIN pacientes p ON c.paciente_id = p.id
-            INNER JOIN medicos m ON c.medico_id = m.id
-            ORDER BY c.fecha DESC, c.hora DESC";
-    $citas = $conn->query($sql);
+    $citas = $controller->obtenerTodas();
 }
+
+$current_page = 'citas';
+$page_title = $mostrar_formulario
+    ? ($cita ? "Editar Cita" : "Nueva Cita")
+    : "Gestión de Citas";
 
 include '../includes/header.php';
 ?>
