@@ -10,15 +10,14 @@ $current_page = 'historial';
 $page_title = "Historial de Citas";
 
 // Busqueda
-$pacientes = $controller->obtenerPacientes();
-$paciente_id = $_GET['paciente_id'] ?? null;
 
-if ($paciente_id) {
-    $historial = $controller->buscarPorPaciente($paciente_id);
+$paciente_nombre = $_GET['paciente_nombre'] ?? null;
+
+if ($paciente_nombre) {
+    $historial = $controller->buscarPorNombre($paciente_nombre);
 } else {
     $historial = $controller->obtenerHistorial();
 }
-
 
 $current_page = 'citasHistorial';
 
@@ -29,19 +28,19 @@ include '../includes/header.php';
     <div class="card">
         <div class="card-body">
 
-            <!-- combobox de busqueda -->
+         
+            <!-- campo de texto de busqueda -->
             <form method="GET" class="row mb-3">
                 <div class="col-md-4">
                     <label class="form-label">Filtrar por paciente</label>
-                    <select name="paciente_id" class="form-select">
-                        <option value="">Todos los pacientes</option>
-                        <?php foreach ($pacientes as $p): ?>
-                            <option value="<?= $p['id'] ?>"
-                                <?= ($paciente_id == $p['id']) ? 'selected' : '' ?>>
-                                <?= $p['nombre'] . " " . $p['apellido'] ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                   <input 
+                    type="text" 
+                    name="paciente_nombre" 
+                    class="form-control" 
+                    placeholder="Nombre o apellido del paciente..."
+                    value="<?= htmlspecialchars($_GET['paciente_nombre'] ?? '') ?>"
+                    id="inputBusqueda"
+                >
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
                     <button class="btn btn-primary w-100">
