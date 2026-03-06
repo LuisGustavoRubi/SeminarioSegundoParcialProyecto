@@ -45,17 +45,17 @@ include '../includes/header.php';
                         <?php if ($cita): ?>
                             <input type="hidden" name="id" value="<?php echo $cita['id']; ?>">
                         <?php endif; ?>
-                        
+
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label for="paciente_id" class="form-label">Paciente *</label>
                                 <select class="form-select" id="paciente_id" name="paciente_id" required>
                                     <option value="">Seleccionar paciente...</option>
                                     <?php while ($p = $pacientes->fetch_assoc()): ?>
-                                    <option value="<?php echo $p['id']; ?>" 
+                                        <option value="<?php echo $p['id']; ?>"
                                             <?php echo ($cita && $cita['paciente_id'] == $p['id']) ? 'selected' : ''; ?>>
-                                        <?php echo normalizar_texto($p['nombre']) . ' ' . normalizar_texto($p['apellido']) . ' - ' . $p['cedula']; ?>
-                                    </option>
+                                            <?php echo normalizar_texto($p['nombre']) . ' ' . normalizar_texto($p['apellido']) . ' - ' . $p['cedula']; ?>
+                                        </option>
                                     <?php endwhile; ?>
                                 </select>
                             </div>
@@ -64,10 +64,10 @@ include '../includes/header.php';
                                 <select class="form-select" id="medico_id" name="medico_id" required>
                                     <option value="">Seleccionar médico...</option>
                                     <?php while ($m = $medicos->fetch_assoc()): ?>
-                                    <option value="<?php echo $m['id']; ?>" 
+                                        <option value="<?php echo $m['id']; ?>"
                                             <?php echo ($cita && $cita['medico_id'] == $m['id']) ? 'selected' : ''; ?>>
-                                        Dr. <?php echo normalizar_texto($m['nombre']) . ' ' . normalizar_texto($m['apellido']) . ' - ' . normalizar_texto($m['especialidad']); ?>
-                                    </option>
+                                            Dr. <?php echo normalizar_texto($m['nombre']) . ' ' . normalizar_texto($m['apellido']) . ' - ' . normalizar_texto($m['especialidad']); ?>
+                                        </option>
                                     <?php endwhile; ?>
                                 </select>
                             </div>
@@ -76,31 +76,41 @@ include '../includes/header.php';
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label for="fecha" class="form-label">Fecha *</label>
-                                <input type="date" class="form-control" id="fecha" name="fecha" 
-                                       value="<?php echo $cita ? $cita['fecha'] : ''; ?>" required>
+                                <input type="date" class="form-control" id="fecha" name="fecha"
+                                    value="<?php echo $cita ? $cita['fecha'] : ''; ?>" required>
                             </div>
                             <div class="col-md-6">
                                 <label for="hora" class="form-label">Hora *</label>
-                                <input type="time" class="form-control" id="hora" name="hora" 
-                                       value="<?php echo $cita ? $cita['hora'] : ''; ?>" required>
+                                <input type="time" class="form-control" id="hora" name="hora"
+                                    value="<?php echo $cita ? $cita['hora'] : ''; ?>" required>
                             </div>
                         </div>
 
                         <div class="mb-3">
                             <label for="motivo" class="form-label">Motivo de la Consulta</label>
-                            <textarea class="form-control" id="motivo" name="motivo" rows="3" 
-                                      placeholder="Describa brevemente el motivo de la consulta..."><?php echo $cita ? $cita['motivo'] : ''; ?></textarea>
+                            <textarea class="form-control" id="motivo" name="motivo" rows="3"
+                                placeholder="Describa brevemente el motivo de la consulta..."><?php echo $cita ? $cita['motivo'] : ''; ?></textarea>
                         </div>
 
                         <?php if ($cita): ?>
-                        <div class="mb-3">
-                            <label for="estado" class="form-label">Estado *</label>
-                            <select class="form-select" id="estado" name="estado" required>
-                                <option value="pendiente" <?php echo $cita['estado'] == 'pendiente' ? 'selected' : ''; ?>>Pendiente</option>
-                                <option value="completada" <?php echo $cita['estado'] == 'completada' ? 'selected' : ''; ?>>Completada</option>
-                                <option value="cancelada" <?php echo $cita['estado'] == 'cancelada' ? 'selected' : ''; ?>>Cancelada</option>
-                            </select>
-                        </div>
+                            <div class="mb-3">
+                                <label for="estado" class="form-label">Estado *</label>
+                                <select class="form-select" id="estado" name="estado" required>
+                                    <option value="pendiente" <?php echo $cita['estado'] == 'pendiente' ? 'selected' : ''; ?>>Pendiente</option>
+                                    <option value="completada" <?php echo $cita['estado'] == 'completada' ? 'selected' : ''; ?>>Completada</option>
+                                    <option value="cancelada" <?php echo $cita['estado'] == 'cancelada' ? 'selected' : ''; ?>>Cancelada</option>
+                                </select>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if ($cita): ?>
+                            <div class="mb-3">
+                                <label for="observacion" class="form-label">
+                                    Observación del Cambio
+                                </label>
+                                <textarea class="form-control" id="observacion" name="observacion" rows="2" 
+                                    placeholder="Motivo del cambio de la cita" required></textarea>
+                            </div>
                         <?php endif; ?>
 
                         <hr class="my-4">
@@ -159,41 +169,41 @@ include '../includes/header.php';
                         </thead>
                         <tbody>
                             <?php while ($c = $citas->fetch_assoc()): ?>
-                            <tr>
-                                <td><strong><?php echo date('d/m/Y', strtotime($c['fecha'])); ?></strong></td>
-                                <td><?php echo date('H:i', strtotime($c['hora'])); ?></td>
-                                <td><?php echo normalizar_texto($c['paciente_nombre']); ?></td>
-                                <td>Dr. <?php echo normalizar_texto($c['medico_nombre']); ?></td>
-                                <td><span class="badge bg-info text-dark"><?php echo normalizar_texto($c['especialidad']); ?></span></td>
-                                <td><?php echo substr($c['motivo'], 0, 40); ?><?php echo strlen($c['motivo']) > 40 ? '...' : ''; ?></td>
-                                <td>
-                                    <?php if ($c['estado'] == 'pendiente'): ?>
-                                        <span class="badge bg-warning text-dark">Pendiente</span>
-                                    <?php elseif ($c['estado'] == 'completada'): ?>
-                                        <span class="badge bg-success">Completada</span>
-                                    <?php else: ?>
-                                        <span class="badge bg-secondary">Cancelada</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <div class="btn-group btn-group-sm" role="group">
-                                        <a href="?action=edit&id=<?php echo $c['id']; ?>" class="btn btn-outline-primary" title="Editar">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
+                                <tr>
+                                    <td><strong><?php echo date('d/m/Y', strtotime($c['fecha'])); ?></strong></td>
+                                    <td><?php echo date('H:i', strtotime($c['hora'])); ?></td>
+                                    <td><?php echo normalizar_texto($c['paciente_nombre']); ?></td>
+                                    <td>Dr. <?php echo normalizar_texto($c['medico_nombre']); ?></td>
+                                    <td><span class="badge bg-info text-dark"><?php echo normalizar_texto($c['especialidad']); ?></span></td>
+                                    <td><?php echo substr($c['motivo'], 0, 40); ?><?php echo strlen($c['motivo']) > 40 ? '...' : ''; ?></td>
+                                    <td>
                                         <?php if ($c['estado'] == 'pendiente'): ?>
-                                        <button type="button" class="btn btn-outline-warning" 
-                                                onclick="confirmarCancelacion(<?php echo $c['id']; ?>)" title="Cancelar">
-                                            <i class="bi bi-x-circle"></i>
-                                        </button>
+                                            <span class="badge bg-warning text-dark">Pendiente</span>
+                                        <?php elseif ($c['estado'] == 'completada'): ?>
+                                            <span class="badge bg-success">Completada</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-secondary">Cancelada</span>
                                         <?php endif; ?>
-                                        <button type="button" class="btn btn-outline-danger" 
-                                                onclick="confirmarEliminacion(<?php echo $c['id']; ?>, 'Cita del <?php echo date('d/m/Y', strtotime($c['fecha'])); ?>', 'la cita')" 
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="?action=edit&id=<?php echo $c['id']; ?>" class="btn btn-outline-primary" title="Editar">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <?php if ($c['estado'] == 'pendiente'): ?>
+                                                <button type="button" class="btn btn-outline-warning"
+                                                    onclick="confirmarCancelacion(<?php echo $c['id']; ?>)" title="Cancelar">
+                                                    <i class="bi bi-x-circle"></i>
+                                                </button>
+                                            <?php endif; ?>
+                                            <button type="button" class="btn btn-outline-danger"
+                                                onclick="confirmarEliminacion(<?php echo $c['id']; ?>, 'Cita del <?php echo date('d/m/Y', strtotime($c['fecha'])); ?>', 'la cita')"
                                                 title="Eliminar">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
                             <?php endwhile; ?>
                         </tbody>
                     </table>

@@ -1,14 +1,17 @@
 <?php
 require_once '../includes/config.php';
 
-class CitasController {
+class CitasController
+{
 
     private $conn;
-    public function __construct($conn) {
+    public function __construct($conn)
+    {
         $this->conn = $conn;
     }
 
-    public function handleRequest() {
+    public function handleRequest()
+    {
         if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
 
             $paciente_id = $_POST['paciente_id'];
@@ -48,36 +51,87 @@ class CitasController {
 
             // Actualizar registro
             if ($_POST['action'] == 'update') {
-
                 $id = $_POST['id'];
+                $observacion = $_POST['observacion'] ?? '';
 
-                $check = $this->conn->query("SELECT id FROM citas 
-                    WHERE medico_id=$medico_id 
-                    AND fecha='$fecha' 
-                    AND hora='$hora' 
-                    AND estado != 'cancelada'
-                    AND id != $id");
+                // Estado anterior
+                $citaAnterior = $this->conn->query("SELECT * FROM citas WHERE id=$id")->fetch_assoc();
+
+                $check = $this->conn->query("SELECT id FROM citas WHERE medico_id=$medico_id 
+                AND fecha='$fecha' 
+                AND hora='$hora' 
+                AND estado != 'cancelada'
+                AND id != $id");
 
                 if ($check->num_rows > 0) {
                     $_SESSION['error'] = "Ya existe una cita para este médico en esa fecha y hora";
                 } else {
+                    // Tpo de cambio
+                    $tipo_cambio = "modificacion";
+                    if ($estado == "cancelada") {
+                        $tipo_cambio = "cancelacion";
+                    }
 
+                    if ($citaAnterior['fecha'] != $fecha || $citaAnterior['hora'] != $hora) {
+                        $tipo_cambio = "reprogramacion";
+                    }
+
+                    // Guardar en la tabla de hisotorial de citas
+                    $sqlHistorial = "INSERT INTO citas_historial(
+                    cita_id,
+                    tipo_cambio,
+                    observacion,
+
+                    anterior_paciente_id,
+                    anterior_medico_id,
+                    anterior_fecha,
+                    anterior_hora,
+                    anterior_motivo,
+                    anterior_estado,
+
+                    nuevo_paciente_id,
+                    nuevo_medico_id,
+                    nuevo_fecha,
+                    nuevo_hora,
+                    nuevo_motivo,
+                    nuevo_estado
+                    
+                    ) VALUES (
+                    $id,
+                    '$tipo_cambio',
+                    '$observacion',
+
+                    {$citaAnterior['paciente_id']},
+                    {$citaAnterior['medico_id']},
+                    '{$citaAnterior['fecha']}',
+                    '{$citaAnterior['hora']}',
+                    '{$citaAnterior['motivo']}',
+                    '{$citaAnterior['estado']}',
+
+                    $paciente_id,
+                    $medico_id,
+                    '$fecha',
+                    '$hora',
+                    '$motivo',
+                    '$estado'
+                    )";
+                    $this->conn->query($sqlHistorial);
+
+                    // Actualizar cita
                     $sql = "UPDATE citas SET
-                        paciente_id=$paciente_id,
-                        medico_id=$medico_id,
-                        fecha='$fecha',
-                        hora='$hora',
-                        motivo='$motivo',
-                        estado='$estado'
-                        WHERE id=$id";
-
+                    paciente_id=$paciente_id,
+                    medico_id=$medico_id,
+                    fecha='$fecha',
+                    hora='$hora',
+                    motivo='$motivo',
+                    estado='$estado'
+                    WHERE id=$id";
                     if ($this->conn->query($sql)) {
                         $_SESSION['success'] = "Cita actualizada exitosamente";
                     } else {
                         $_SESSION['error'] = "Error al actualizar cita";
                     }
                 }
-
                 header("Location: ../pages/citas.php");
                 exit();
             }
@@ -85,8 +139,49 @@ class CitasController {
 
         // Cancelar el estado de la cita
         if (isset($_GET['action']) && $_GET['action'] == 'cancel' && isset($_GET['id'])) {
-
             $id = $_GET['id'];
+
+            $citaAnterior = $this->conn->query("SELECT * FROM citas WHERE id=$id")->fetch_assoc();
+            $sqlHistorial = "INSERT INTO citas_historial(
+            cita_id,
+            tipo_cambio,
+            observacion,
+
+            anterior_paciente_id,
+            anterior_medico_id,
+            anterior_fecha,
+            anterior_hora,
+            anterior_motivo,
+            anterior_estado,
+
+            nuevo_paciente_id,
+            nuevo_medico_id,
+            nuevo_fecha,
+            nuevo_hora,
+            nuevo_motivo,
+            nuevo_estado
+
+            ) VALUES (
+            $id,
+            'cancelacion',
+            'Cita cancelada',
+
+            {$citaAnterior['paciente_id']},
+            {$citaAnterior['medico_id']},
+            '{$citaAnterior['fecha']}',
+            '{$citaAnterior['hora']}',
+            '{$citaAnterior['motivo']}',
+            '{$citaAnterior['estado']}',
+
+            {$citaAnterior['paciente_id']},
+            {$citaAnterior['medico_id']},
+            '{$citaAnterior['fecha']}',
+            '{$citaAnterior['hora']}',
+            '{$citaAnterior['motivo']}',
+            'cancelada'
+            )";
+
+            $this->conn->query($sqlHistorial);
 
             if ($this->conn->query("UPDATE citas SET estado='cancelada' WHERE id=$id")) {
                 $_SESSION['success'] = "Cita cancelada exitosamente";
@@ -114,21 +209,24 @@ class CitasController {
         }
     }
 
-    public function obtenerPorId($id) {
+    public function obtenerPorId($id)
+    {
         $result = $this->conn->query("SELECT * FROM citas WHERE id=$id");
         return $result->fetch_assoc();
     }
 
-    public function obtenerPacientes() {
+    public function obtenerPacientes()
+    {
         return $this->conn->query("SELECT * FROM pacientes ORDER BY apellido, nombre");
     }
 
-    public function obtenerMedicos() {
+    public function obtenerMedicos()
+    {
         return $this->conn->query("SELECT * FROM medicos ORDER BY apellido, nombre");
     }
 
-    public function obtenerTodas() {
-
+    public function obtenerTodas()
+    {
         $sql = "SELECT c.*, 
                 CONCAT(p.nombre, ' ', p.apellido) as paciente_nombre,
                 CONCAT(m.nombre, ' ', m.apellido) as medico_nombre,
