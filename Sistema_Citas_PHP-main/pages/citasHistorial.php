@@ -4,13 +4,9 @@ require_once '../controllers/citasHistorialController.php';
 
 $controller = new CitasHistorialController($conn);
 
-$historial = $controller->obtenerHistorial();
-
-$current_page = 'historial';
 $page_title = "Historial de Citas";
 
 // Busqueda
-
 $paciente_nombre = $_GET['paciente_nombre'] ?? null;
 
 if ($paciente_nombre) {
@@ -73,7 +69,11 @@ include '../includes/header.php';
                         <?php foreach ($historial as $h): ?>
                             <tr>
                                 <td>
-                                    <?= date("d/m/Y H:i", strtotime($h['fecha_cambio'])) ?>
+                                    <?php
+                                        $dt = new DateTime($h['fecha_cambio'], new DateTimeZone('UTC'));
+                                        $dt->setTimezone(new DateTimeZone('America/Tegucigalpa'));
+                                        echo $dt->format('d/m/Y H:i');
+                                    ?>
                                 </td>
                                 <td>
                                     <?php if ($h['tipo_cambio'] == 'modificacion'): ?>
@@ -85,15 +85,15 @@ include '../includes/header.php';
                                     <?php endif; ?>
                                 </td>
                                 <td>
-                                    <?= $h['paciente_nuevo_nombre'] . " " . $h['paciente_nuevo_apellido'] ?>
+                                    <?= normalizar_texto($h['paciente_nuevo_nombre']) . " " . normalizar_texto($h['paciente_nuevo_apellido']) ?>
                                 </td>
                                 <td>
-                                    <?= $h['medico_nuevo_nombre'] . " " . $h['medico_nuevo_apellido'] ?>
+                                    <?= normalizar_texto($h['medico_nuevo_nombre']) . " " . normalizar_texto($h['medico_nuevo_apellido']) ?>
                                 </td>
                                 <td>
-                                    <?= date("d/m/Y", strtotime($h['nuevo_fecha'])) ?>
+                                    <?= $h['nuevo_fecha'] ? date("d/m/Y", strtotime($h['nuevo_fecha'])) : '-' ?>
                                     <br>
-                                    <small><?= $h['nuevo_hora'] ?></small>
+                                    <small><?= $h['nuevo_hora'] ? substr($h['nuevo_hora'], 0, 5) : '-' ?></small>
                                 </td>
                                 <td>
                                     <?php if ($h['nuevo_estado'] == 'pendiente'): ?>
@@ -104,23 +104,21 @@ include '../includes/header.php';
                                         <span class="badge bg-danger">Cancelada</span>
                                     <?php endif; ?>
 
-                                    <!-- es prueba aun puede no ser necesario -->
                                     <?php if (
-                                        $h['anterior_fecha'] != $h['nuevo_fecha'] ||
-                                        $h['anterior_hora'] != $h['nuevo_hora']
+                                        $h['anterior_fecha'] && $h['nuevo_fecha'] &&
+                                        ($h['anterior_fecha'] != $h['nuevo_fecha'] || $h['anterior_hora'] != $h['nuevo_hora'])
                                     ): ?>
                                         <br>
                                         <small class="text-muted">
                                             Fecha anterior:
                                             <?= date("d/m/Y", strtotime($h['anterior_fecha'])) ?>
-                                            <?= $h['anterior_hora'] ?>
-
+                                            <?= $h['anterior_hora'] ? substr($h['anterior_hora'], 0, 5) : '' ?>
                                         </small>
                                     <?php endif; ?>
 
                                 </td>
                                 <td>
-                                    <?= $h['observacion'] ?>
+                                    <?= htmlspecialchars($h['observacion'] ?? '', ENT_QUOTES, 'UTF-8') ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

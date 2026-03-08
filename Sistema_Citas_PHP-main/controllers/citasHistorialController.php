@@ -56,6 +56,10 @@ class CitasHistorialController
 
         $resultado = $this->conn->query($sql);
 
+        if ($resultado === false) {
+            return [];
+        }
+
         return $resultado->fetch_all(MYSQLI_ASSOC);
     }
 
@@ -109,6 +113,10 @@ class CitasHistorialController
 
         ORDER BY h.fecha_cambio DESC
     ");
+
+        if ($busqueda === false) {
+            return [];
+        }
 
         $busqueda->bind_param("ii", $paciente_id, $paciente_id);
         $busqueda->execute();
@@ -165,6 +173,10 @@ class CitasHistorialController
     ");
 
     $termino = "%$nombre%";
+    if ($busqueda === false) {
+        return [];
+    }
+
     $busqueda->bind_param("sss", $termino, $termino, $termino);
     $busqueda->execute();
 

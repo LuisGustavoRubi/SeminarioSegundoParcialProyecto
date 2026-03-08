@@ -22,6 +22,13 @@ if (!$mostrar_formulario) {
     $pacientes = $controller->obtenerTodos();
 }
 
+// Recuperar datos de formulario si hubo error de validación
+$form_data = null;
+if (isset($_SESSION['form_data'])) {
+    $form_data = $_SESSION['form_data'];
+    unset($_SESSION['form_data']);
+}
+
 $current_page = 'pacientes';
 $page_title = $mostrar_formulario
     ? ($paciente ? "Editar Paciente" : "Nuevo Paciente")
@@ -39,7 +46,7 @@ include '../includes/header.php';
                     <?php echo $paciente ? 'Editar' : 'Registrar'; ?> Paciente
                 </div>
                 <div class="card-body">
-                    <form method="POST" onsubmit="return validarFormulario()">
+                    <form method="POST" onsubmit="return validarFormulario()" novalidate>
                         <input type="hidden" name="action" value="<?php echo $paciente ? 'update' : 'create'; ?>">
                         <?php if ($paciente): ?>
                             <input type="hidden" name="id" value="<?php echo $paciente['id']; ?>">
@@ -49,14 +56,14 @@ include '../includes/header.php';
                             <div class="col-md-6">
                                 <label for="nombre" class="form-label">Nombre *</label>
                                 <input type="text" class="form-control" id="nombre" name="nombre"
-                                       value="<?php echo $paciente ? htmlspecialchars($paciente['nombre'], ENT_QUOTES, 'UTF-8') : ''; ?>"
-                                       required>
+                                       value="<?php echo htmlspecialchars($form_data['nombre'] ?? ($paciente['nombre'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                       maxlength="12" required>
                             </div>
                             <div class="col-md-6">
                                 <label for="apellido" class="form-label">Apellido *</label>
                                 <input type="text" class="form-control" id="apellido" name="apellido"
-                                       value="<?php echo $paciente ? htmlspecialchars($paciente['apellido'], ENT_QUOTES, 'UTF-8') : ''; ?>"
-                                       required>
+                                       value="<?php echo htmlspecialchars($form_data['apellido'] ?? ($paciente['apellido'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                       maxlength="12" required>
                             </div>
                         </div>
 
@@ -64,29 +71,39 @@ include '../includes/header.php';
                             <div class="col-md-6">
                                 <label for="cedula" class="form-label">Cédula *</label>
                                 <input type="text" class="form-control" id="cedula" name="cedula"
-                                       value="<?php echo $paciente ? htmlspecialchars($paciente['cedula'], ENT_QUOTES, 'UTF-8') : ''; ?>"
+                                       value="<?php echo htmlspecialchars($form_data['cedula'] ?? ($paciente['cedula'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                       placeholder="0000-0000-00000"
+                                       pattern="\d{4}-\d{4}-\d{5}"
+                                       maxlength="15"
                                        required>
-                                <div class="form-text">Debe ser única</div>
+                                <div class="form-text">Formato: 0000-0000-00000 · Debe ser única</div>
                             </div>
                             <div class="col-md-6">
-                                <label for="fecha_nacimiento" class="form-label">Fecha de Nacimiento</label>
+                                <label for="fecha_nacimiento" class="form-label">Fecha de Nacimiento *</label>
                                 <input type="date" class="form-control" id="fecha_nacimiento" name="fecha_nacimiento"
-                                       value="<?php echo $paciente ? $paciente['fecha_nacimiento'] : ''; ?>">
+                                       value="<?php echo htmlspecialchars($form_data['fecha_nacimiento'] ?? ($paciente['fecha_nacimiento'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                       min="1900-01-01"
+                                       max="<?php echo (new DateTime('now', new DateTimeZone('America/Tegucigalpa')))->format('Y-m-d'); ?>"
+                                       required>
                             </div>
                         </div>
 
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <label for="telefono" class="form-label">Teléfono</label>
+                                <label for="telefono" class="form-label">Teléfono *</label>
                                 <input type="tel" class="form-control" id="telefono" name="telefono"
-                                       value="<?php echo $paciente ? htmlspecialchars($paciente['telefono'], ENT_QUOTES, 'UTF-8') : ''; ?>"
-                                       placeholder="+504 1234-5678">
+                                       value="<?php echo htmlspecialchars($form_data['telefono'] ?? ($paciente['telefono'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                       placeholder="+504 9999-9999"
+                                       pattern="\+504 \d{4}-\d{4}"
+                                       maxlength="14"
+                                       required>
+                                <div class="form-text">Formato: +504 9999-9999</div>
                             </div>
                             <div class="col-md-6">
-                                <label for="email" class="form-label">Email</label>
+                                <label for="email" class="form-label">Email *</label>
                                 <input type="email" class="form-control" id="email" name="email"
-                                       value="<?php echo $paciente ? htmlspecialchars($paciente['email'], ENT_QUOTES, 'UTF-8') : ''; ?>"
-                                       placeholder="ejemplo@correo.com">
+                                       value="<?php echo htmlspecialchars($form_data['email'] ?? ($paciente['email'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                       placeholder="ejemplo@correo.com" required>
                             </div>
                         </div>
 
@@ -108,21 +125,102 @@ include '../includes/header.php';
     </div>
 
     <script>
-        function validarFormulario() {
-            const nombre   = document.getElementById('nombre').value.trim();
-            const apellido = document.getElementById('apellido').value.trim();
-            const cedula   = document.getElementById('cedula').value.trim();
+        const CEDULA_REGEX   = /^\d{4}-\d{4}-\d{5}$/;
+        const TELEFONO_REGEX = /^\+504 \d{4}-\d{4}$/;
 
-            if (!nombre || !apellido || !cedula) {
+        function validarFormulario() {
+            const campos = [
+                { id: 'nombre',           label: 'Nombre' },
+                { id: 'apellido',         label: 'Apellido' },
+                { id: 'cedula',           label: 'Cédula' },
+                { id: 'telefono',         label: 'Teléfono' },
+                { id: 'email',            label: 'Email' },
+                { id: 'fecha_nacimiento', label: 'Fecha de Nacimiento' }
+            ];
+
+            const faltantes = campos
+                .filter(c => !document.getElementById(c.id).value.trim())
+                .map(c => c.label);
+
+            if (faltantes.length > 0) {
                 Swal.fire({
                     icon:  'error',
-                    title: 'Campos requeridos',
-                    text:  'Por favor complete todos los campos obligatorios'
+                    title: 'Campos obligatorios incompletos',
+                    html:  'Por favor complete los siguientes campos:<br><strong>' + faltantes.join(', ') + '</strong>'
                 });
                 return false;
             }
+
+            const fechaNacStr = document.getElementById('fecha_nacimiento').value;
+            if (fechaNacStr) {
+                const nacimiento = new Date(fechaNacStr + 'T00:00:00');
+                const hoy        = new Date();
+                hoy.setHours(0, 0, 0, 0);
+                if (nacimiento > hoy) {
+                    Swal.fire({
+                        icon:  'error',
+                        title: 'Fecha inválida',
+                        html:  'La fecha de nacimiento no puede ser una <strong>fecha futura</strong>.'
+                    });
+                    return false;
+                }
+                if (nacimiento < new Date('1900-01-01T00:00:00')) {
+                    Swal.fire({
+                        icon:  'error',
+                        title: 'Fecha inválida',
+                        html:  'La fecha de nacimiento no puede ser anterior al <strong>año 1900</strong>.'
+                    });
+                    return false;
+                }
+            }
+
+            const cedula = document.getElementById('cedula').value.trim();
+            if (!CEDULA_REGEX.test(cedula)) {
+                Swal.fire({
+                    icon:  'error',
+                    title: 'Cédula inválida',
+                    html:  'El formato de cédula no es válido.<br>Use el formato: <strong>0000-0000-00000</strong><br><small class="text-muted">Solo dígitos separados por guiones</small>'
+                });
+                return false;
+            }
+
+            const telefono = document.getElementById('telefono').value.trim();
+            if (!TELEFONO_REGEX.test(telefono)) {
+                Swal.fire({
+                    icon:  'error',
+                    title: 'Teléfono inválido',
+                    html:  'El formato de teléfono no es válido.<br>Use el formato: <strong>+504 9999-9999</strong>'
+                });
+                return false;
+            }
+
             return true;
         }
+
+        // Auto-formato de cédula al escribir
+        document.getElementById('cedula').addEventListener('input', function () {
+            let val = this.value.replace(/\D/g, ''); // solo dígitos
+            if (val.length > 13) val = val.slice(0, 13); // máximo 13 dígitos
+            if (val.length > 8)
+                val = val.slice(0, 4) + '-' + val.slice(4, 8) + '-' + val.slice(8);
+            else if (val.length > 4)
+                val = val.slice(0, 4) + '-' + val.slice(4);
+            this.value = val;
+        });
+
+        // Auto-formato de teléfono al escribir: +504 9999-9999
+        document.getElementById('telefono').addEventListener('input', function () {
+            // Quitar el prefijo +504 primero para no incluir sus dígitos en el número local
+            let local = this.value.replace(/^\+504\s*/, '');
+            let val   = local.replace(/\D/g, ''); // solo dígitos locales
+            if (val.length > 8) val = val.slice(0, 8); // máximo 8 dígitos
+            if (val.length > 4)
+                this.value = '+504 ' + val.slice(0, 4) + '-' + val.slice(4);
+            else if (val.length > 0)
+                this.value = '+504 ' + val;
+            else
+                this.value = '';
+        });
     </script>
 
 <?php else: ?>

@@ -122,7 +122,7 @@
 
                     <div class="px-3 text-muted small">
                         <p class="mb-1">Sistema de Gestión</p>
-                        <p class="mb-0">Versión 1.0</p>
+                        <p class="mb-0">Versión 1.1</p>
                     </div>
                 </div>
             </nav>

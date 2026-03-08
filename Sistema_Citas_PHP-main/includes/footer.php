@@ -46,7 +46,7 @@
             Swal.fire({
                 icon: 'success',
                 title: '¡Éxito!',
-                text: '<?php echo $_SESSION['success']; ?>',
+                text: <?php echo json_encode($_SESSION['success']); ?>,
                 timer: 3000,
                 showConfirmButton: false
             });
@@ -57,7 +57,7 @@
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: '<?php echo $_SESSION['error']; ?>'
+                text: <?php echo json_encode($_SESSION['error']); ?>
             });
             <?php unset($_SESSION['error']); ?>
         <?php endif; ?>

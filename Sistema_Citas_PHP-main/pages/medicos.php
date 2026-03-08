@@ -22,7 +22,13 @@ if (!$mostrar_formulario) {
     $medicos = $controller->obtenerTodos();
 }
 
-// AHORA sí puedes usarla
+// Recuperar datos de formulario si hubo error de validación
+$form_data = null;
+if (isset($_SESSION['form_data'])) {
+    $form_data = $_SESSION['form_data'];
+    unset($_SESSION['form_data']);
+}
+
 $current_page = 'medicos';
 $page_title = $mostrar_formulario 
     ? ($medico ? "Editar Médico" : "Nuevo Médico")
@@ -39,7 +45,7 @@ include '../includes/header.php';
                     <?php echo $medico ? 'Editar' : 'Registrar'; ?> Médico
                 </div>
                 <div class="card-body">
-                    <form method="POST">
+                    <form method="POST" onsubmit="return validarFormularioMedico()" novalidate>
                         <input type="hidden" name="action" value="<?php echo $medico ? 'update' : 'create'; ?>">
                         <?php if ($medico): ?>
                             <input type="hidden" name="id" value="<?php echo $medico['id']; ?>">
@@ -48,35 +54,67 @@ include '../includes/header.php';
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label for="nombre" class="form-label">Nombre *</label>
-                                <input type="text" class="form-control" id="nombre" name="nombre" 
-                                       value="<?php echo $medico ? $medico['nombre'] : ''; ?>" required>
+                                <input type="text" class="form-control" id="nombre" name="nombre"
+                                       value="<?php echo htmlspecialchars($form_data['nombre'] ?? ($medico['nombre'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                       maxlength="12" required>
                             </div>
                             <div class="col-md-6">
                                 <label for="apellido" class="form-label">Apellido *</label>
-                                <input type="text" class="form-control" id="apellido" name="apellido" 
-                                       value="<?php echo $medico ? $medico['apellido'] : ''; ?>" required>
+                                <input type="text" class="form-control" id="apellido" name="apellido"
+                                       value="<?php echo htmlspecialchars($form_data['apellido'] ?? ($medico['apellido'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                       maxlength="12" required>
                             </div>
                         </div>
 
                         <div class="mb-3">
-                            <label for="especialidad" class="form-label">Especialidad *</label>
-                            <input type="text" class="form-control" id="especialidad" name="especialidad" 
-                                   value="<?php echo $medico ? $medico['especialidad'] : ''; ?>"
-                                   placeholder="Ej: Medicina General, Pediatría, Cardiología..." required>
+                            <label class="form-label">Especialidad *</label>
+                            <?php $espActual = $form_data['especialidad'] ?? ($medico['especialidad'] ?? ''); ?>
+                            <input type="hidden" id="especialidad" name="especialidad"
+                                   value="<?php echo htmlspecialchars($espActual, ENT_QUOTES, 'UTF-8'); ?>">
+                            <div class="dropdown">
+                                <button type="button"
+                                        class="btn btn-outline-secondary dropdown-toggle w-100 text-start"
+                                        id="dropEspecialidad"
+                                        data-bs-toggle="dropdown"
+                                        data-bs-auto-close="true"
+                                        aria-expanded="false"
+                                        style="background:#fff;">
+                                    <?php echo $espActual ? htmlspecialchars($espActual, ENT_QUOTES, 'UTF-8') : '-- Seleccione una especialidad --'; ?>
+                                </button>
+                                <ul class="dropdown-menu w-100"
+                                    aria-labelledby="dropEspecialidad"
+                                    style="max-height:220px; overflow-y:auto;">
+                                    <?php foreach (MedicoController::getEspecialidades() as $esp): ?>
+                                        <li>
+                                            <a class="dropdown-item<?php echo ($espActual === $esp) ? ' active' : ''; ?>"
+                                               href="#"
+                                               data-value="<?php echo htmlspecialchars($esp, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <?php echo htmlspecialchars($esp, ENT_QUOTES, 'UTF-8'); ?>
+                                            </a>
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
                         </div>
 
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <label for="telefono" class="form-label">Teléfono</label>
-                                <input type="tel" class="form-control" id="telefono" name="telefono" 
-                                       value="<?php echo $medico ? $medico['telefono'] : ''; ?>"
-                                       placeholder="+504 1234-5678">
+                                <label for="telefono" class="form-label">Teléfono *</label>
+                                <input type="tel" class="form-control" id="telefono" name="telefono"
+                                       value="<?php echo htmlspecialchars($form_data['telefono'] ?? ($medico['telefono'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                       placeholder="+504 9999-9999"
+                                       pattern="\+504 \d{4}-\d{4}"
+                                       maxlength="14"
+                                       required>
+                                <div class="form-text">Formato: +504 9999-9999</div>
                             </div>
                             <div class="col-md-6">
-                                <label for="email" class="form-label">Email</label>
-                                <input type="email" class="form-control" id="email" name="email" 
-                                       value="<?php echo $medico ? $medico['email'] : ''; ?>"
-                                       placeholder="doctor@hospital.com">
+                                <label for="email" class="form-label">Email *</label>
+                                <input type="email" class="form-control" id="email" name="email"
+                                       value="<?php echo htmlspecialchars($form_data['email'] ?? ($medico['email'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                       placeholder="doctor@hospital.com"
+                                       required>
+                                <div class="form-text">Dominio requerido: @hospital.com</div>
                             </div>
                         </div>
 
@@ -95,6 +133,91 @@ include '../includes/header.php';
             </div>
         </div>
     </div>
+
+    <script>
+        const TELEFONO_MEDICO_REGEX = /^\+504 \d{4}-\d{4}$/;
+
+        function validarFormularioMedico() {
+            const campos = [
+                { id: 'nombre',       label: 'Nombre' },
+                { id: 'apellido',     label: 'Apellido' },
+                { id: 'telefono',     label: 'Teléfono' },
+                { id: 'email',        label: 'Email' }
+            ];
+
+            // Verificar el select de especialidad por separado
+            if (!document.getElementById('especialidad').value) {
+                Swal.fire({
+                    icon:  'error',
+                    title: 'Especialidad requerida',
+                    text:  'Por favor seleccione una especialidad de la lista.'
+                });
+                return false;
+            }
+
+            const faltantes = campos
+                .filter(c => !document.getElementById(c.id).value.trim())
+                .map(c => c.label);
+
+            if (faltantes.length > 0) {
+                Swal.fire({
+                    icon:  'error',
+                    title: 'Campos obligatorios incompletos',
+                    html:  'Por favor complete los siguientes campos:<br><strong>' + faltantes.join(', ') + '</strong>'
+                });
+                return false;
+            }
+
+            const telefono = document.getElementById('telefono').value.trim();
+            if (!TELEFONO_MEDICO_REGEX.test(telefono)) {
+                Swal.fire({
+                    icon:  'error',
+                    title: 'Teléfono inválido',
+                    html:  'El formato de teléfono no es válido.<br>Use el formato: <strong>+504 9999-9999</strong>'
+                });
+                return false;
+            }
+
+            const email = document.getElementById('email').value.trim().toLowerCase();
+            if (!email.endsWith('@hospital.com')) {
+                Swal.fire({
+                    icon:  'error',
+                    title: 'Dominio de correo no permitido',
+                    html:  'El correo debe pertenecer al dominio institucional.<br>Ejemplo: <strong>doctor@hospital.com</strong>'
+                });
+                return false;
+            }
+
+            return true;
+        }
+
+        // Dropdown de especialidad
+        document.querySelectorAll('#dropEspecialidad ~ .dropdown-menu .dropdown-item').forEach(function (item) {
+            item.addEventListener('click', function (e) {
+                e.preventDefault();
+                const val = this.dataset.value;
+                document.getElementById('especialidad').value = val;
+                document.getElementById('dropEspecialidad').textContent = val;
+                // Marcar activo visualmente
+                document.querySelectorAll('#dropEspecialidad ~ .dropdown-menu .dropdown-item')
+                    .forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Auto-formato de teléfono al escribir: +504 9999-9999
+        document.getElementById('telefono').addEventListener('input', function () {
+            let local = this.value.replace(/^\+504\s*/, '');
+            let val   = local.replace(/\D/g, '');
+            if (val.length > 8) val = val.slice(0, 8);
+            if (val.length > 4)
+                this.value = '+504 ' + val.slice(0, 4) + '-' + val.slice(4);
+            else if (val.length > 0)
+                this.value = '+504 ' + val;
+            else
+                this.value = '';
+        });
+    </script>
 
 <?php else: ?>
     <div class="mb-3">
