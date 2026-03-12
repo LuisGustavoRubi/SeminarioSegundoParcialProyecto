@@ -129,5 +129,20 @@
 
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                    <h1 class="h2"><?php echo isset($page_title) ? $page_title : 'Dashboard'; ?></h1>
+                    <div>
+                        <h1 class="h2 mb-0"><?php echo isset($page_title) ? htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8') : 'Dashboard'; ?></h1>
+                        <p class="text-muted small mt-1">
+                            <?php 
+                            // Mensajes contextuales por sección
+                            $page_descriptions = [
+                                'Inicio' => 'Vista general del sistema y citas próximas',
+                                'Gestión de Pacientes' => 'Registra, edita y visualiza información de pacientes',
+                                'Gestión de Médicos' => 'Administra médicos y especialidades',
+                                'Gestión de Citas' => 'Programa, edita y supervisa citas médicas',
+                                'Historial de Citas' => 'Consulta el registro histórico de todas las citas'
+                            ];
+                            echo $page_descriptions[isset($page_title) ? $page_title : 'Inicio'] ?? '';
+                            ?>
+                        </p>
+                    </div>
                 </div>

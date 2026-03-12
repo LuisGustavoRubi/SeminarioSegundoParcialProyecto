@@ -9,9 +9,13 @@
     
     <script>
         function confirmarEliminacion(id, nombre, tipo) {
+            // escapar para prevenir inyección en JavaScript
+            const nombreEscapado = nombre.replace(/"/g, '\\"').replace(/'/g, "\\'");
+            const idEscapado = parseInt(id, 10);
+            
             Swal.fire({
                 title: '¿Estás seguro?',
-                text: `¿Deseas eliminar ${tipo} "${nombre}"?`,
+                text: `¿Deseas eliminar ${tipo} "${nombreEscapado}"?`,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
@@ -20,12 +24,15 @@
                 cancelButtonText: 'Cancelar'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    window.location.href = `?action=delete&id=${id}`;
+                    // usar solo el id numérico en la URL
+                    window.location.href = `?action=delete&id=${idEscapado}`;
                 }
             });
         }
 
         function confirmarCancelacion(id) {
+            const idEscapado = parseInt(id, 10);
+            
             Swal.fire({
                 title: '¿Cancelar cita?',
                 text: '¿Estás seguro de cancelar esta cita?',
@@ -37,7 +44,7 @@
                 cancelButtonText: 'No'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    window.location.href = `?action=cancel&id=${id}`;
+                    window.location.href = `?action=cancel&id=${idEscapado}`;
                 }
             });
         }
@@ -46,7 +53,7 @@
             Swal.fire({
                 icon: 'success',
                 title: '¡Éxito!',
-                text: <?php echo json_encode($_SESSION['success']); ?>,
+                text: <?php echo json_encode(htmlspecialchars($_SESSION['success'], ENT_QUOTES, 'UTF-8')); ?>,
                 timer: 3000,
                 showConfirmButton: false
             });
@@ -57,7 +64,7 @@
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: <?php echo json_encode($_SESSION['error']); ?>
+                text: <?php echo json_encode(htmlspecialchars($_SESSION['error'], ENT_QUOTES, 'UTF-8')); ?>
             });
             <?php unset($_SESSION['error']); ?>
         <?php endif; ?>
