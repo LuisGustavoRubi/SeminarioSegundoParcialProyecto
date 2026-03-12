@@ -8,8 +8,27 @@
     
     
     <script>
+        // token CSRF disponible globalmente para los scripts que necesiten enviar POST
+        const CSRF_TOKEN = '<?php echo htmlspecialchars(generate_csrf_token(), ENT_QUOTES, 'UTF-8'); ?>';
+
+        function enviarPost(datos) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.style.display = 'none';
+            // suponemos que el script se ejecuta en la misma página donde se usan las acciones
+            form.action = window.location.pathname;
+            for (const [k, v] of Object.entries(datos)) {
+                const inp = document.createElement('input');
+                inp.type = 'hidden';
+                inp.name = k;
+                inp.value = v;
+                form.appendChild(inp);
+            }
+            document.body.appendChild(form);
+            form.submit();
+        }
+
         function confirmarEliminacion(id, nombre, tipo) {
-            // escapar para prevenir inyección en JavaScript
             const nombreEscapado = nombre.replace(/"/g, '\\"').replace(/'/g, "\\'");
             const idEscapado = parseInt(id, 10);
             
@@ -24,8 +43,7 @@
                 cancelButtonText: 'Cancelar'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    // usar solo el id numérico en la URL
-                    window.location.href = `?action=delete&id=${idEscapado}`;
+                    enviarPost({ action: 'delete', id: idEscapado, csrf_token: CSRF_TOKEN });
                 }
             });
         }
@@ -44,7 +62,7 @@
                 cancelButtonText: 'No'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    window.location.href = `?action=cancel&id=${idEscapado}`;
+                    enviarPost({ action: 'cancel', id: idEscapado, csrf_token: CSRF_TOKEN });
                 }
             });
         }

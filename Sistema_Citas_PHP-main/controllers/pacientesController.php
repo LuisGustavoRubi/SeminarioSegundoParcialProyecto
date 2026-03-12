@@ -1,5 +1,4 @@
 <?php
-session_start();
 require_once '../includes/config.php';
 
 class PacienteController {
@@ -13,6 +12,13 @@ class PacienteController {
 
         // Crear / Actualizar registro
         if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
+
+            // Validar token CSRF obligatorio
+            if (!validate_csrf_token($_POST['csrf_token'] ?? null)) {
+                $_SESSION['error'] = 'Token CSRF inválido. Por favor recargue la página e intente de nuevo.';
+                header('Location: ../pages/pacientes.php');
+                exit();
+            }
 
             // Guardar datos del formulario para recuperación en caso de error
             $_SESSION['form_data'] = $_POST;
@@ -174,10 +180,18 @@ class PacienteController {
 
                 $id = intval($_POST['id']);
 
-                $check = $this->conn->prepare("SELECT id FROM pacientes WHERE cedula = ? AND id != ?");
-                $check->bind_param("si", $cedula, $id);
-                $check->execute();
-                $check->store_result();
+                // verificar existencia del paciente antes de proseguir
+                $exist = $this->conn->prepare("SELECT COUNT(*) FROM pacientes WHERE id=?");
+                $exist->bind_param("i", $id);
+                $exist->execute();
+                $exist->bind_result($cnt);
+                $exist->fetch();
+                $exist->close();
+                if ($cnt === 0) {
+                    $_SESSION['error'] = 'Paciente no encontrado para actualizar.';
+                    header("Location: ../pages/pacientes.php");
+                    exit();
+                }
 
                 if ($check->num_rows > 0) {
                     $_SESSION['error'] = "La cédula $cedula ya está registrada para otro paciente.";
@@ -236,16 +250,44 @@ class PacienteController {
             }
         }
 
-        // Eliminar registro
-        if (isset($_GET['action']) && $_GET['action'] == 'delete' && isset($_GET['id'])) {
+        // Eliminar registro (ahora vía POST en lugar de GET)
+        if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
+            if (!validate_csrf_token($_POST['csrf_token'] ?? null)) {
+                $_SESSION['error'] = 'Token CSRF inválido. No se puede eliminar el paciente.';
+                header('Location: ../pages/pacientes.php');
+                exit();
+            }
 
-            $id = intval($_GET['id']);
+            $id = intval($_POST['id'] ?? 0);
+            if ($id <= 0) {
+                $_SESSION['error'] = 'ID de paciente no válido.';
+                header('Location: ../pages/pacientes.php');
+                exit();
+            }
 
-            if ($this->conn->query("DELETE FROM pacientes WHERE id=$id")) {
+            // verificar citas asociadas
+            $chk = $this->conn->prepare("SELECT COUNT(*) FROM citas WHERE paciente_id=?");
+            $chk->bind_param("i", $id);
+            $chk->execute();
+            $chk->bind_result($count);
+            $chk->fetch();
+            $chk->close();
+
+            if ($count > 0) {
+                $_SESSION['error'] = 'No se puede eliminar el paciente porque tiene citas asociadas.';
+                header('Location: ../pages/pacientes.php');
+                exit();
+            }
+
+            $stmt = $this->conn->prepare("DELETE FROM pacientes WHERE id=?");
+            $stmt->bind_param("i", $id);
+            if ($stmt->execute()) {
                 $_SESSION['success'] = "Paciente eliminado exitosamente";
             } else {
-                $_SESSION['error'] = "Error al eliminar paciente";
+                error_log("[PACIENTES] Error al eliminar paciente id=$id: " . $stmt->error);
+                $_SESSION['error'] = "Error técnico al eliminar paciente";
             }
+            $stmt->close();
 
             header("Location: ../pages/pacientes.php");
             exit();

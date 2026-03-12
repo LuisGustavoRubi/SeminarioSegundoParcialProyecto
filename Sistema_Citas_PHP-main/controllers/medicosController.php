@@ -1,5 +1,4 @@
 <?php
-session_start();
 require_once '../includes/config.php';
 
 class MedicoController {
@@ -41,6 +40,12 @@ class MedicoController {
         // Crear / Actualizar registro
         if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
 
+            // validar CSRF
+            if (!validate_csrf_token($_POST['csrf_token'] ?? null)) {
+                $_SESSION['error'] = 'Token CSRF inválido. Por favor recargue la página.';
+                header('Location: ../pages/medicos.php');
+                exit();
+            }
             // Guardar datos del formulario para recuperación en caso de error
             $_SESSION['form_data'] = $_POST;
 
@@ -172,6 +177,19 @@ class MedicoController {
 
                 $id = intval($_POST['id']);
 
+                // verificar existencia antes de proceder
+                $exist = $this->conn->prepare("SELECT COUNT(*) FROM medicos WHERE id=?");
+                $exist->bind_param("i", $id);
+                $exist->execute();
+                $exist->bind_result($cnt);
+                $exist->fetch();
+                $exist->close();
+                if ($cnt === 0) {
+                    $_SESSION['error'] = 'Médico no encontrado para actualizar.';
+                    header("Location: ../pages/medicos.php");
+                    exit();
+                }
+
                 // Verificar duplicados excluyendo el registro actual
                 $dupCheck = $this->conn->prepare("SELECT id FROM medicos WHERE (telefono = ? OR email = ?) AND id != ?");
                 $dupCheck->bind_param("ssi", $telefono, $email, $id);
@@ -221,16 +239,41 @@ class MedicoController {
             }
         }
 
-        // Eliminar deberia no estar y pasar a cambiar/actualizar estados
-        if (isset($_GET['action']) && $_GET['action'] == 'delete' && isset($_GET['id'])) {
+        // Eliminar médico vía POST con verificación de integridad referencial
+        if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
+            if (!validate_csrf_token($_POST['csrf_token'] ?? null)) {
+                $_SESSION['error'] = 'Token CSRF inválido. No se puede eliminar el médico.';
+                header('Location: ../pages/medicos.php');
+                exit();
+            }
+            $id = intval($_POST['id'] ?? 0);
+            if ($id <= 0) {
+                $_SESSION['error'] = 'ID de médico no válido.';
+                header('Location: ../pages/medicos.php');
+                exit();
+            }
+            $chk = $this->conn->prepare("SELECT COUNT(*) FROM citas WHERE medico_id=?");
+            $chk->bind_param("i", $id);
+            $chk->execute();
+            $chk->bind_result($count);
+            $chk->fetch();
+            $chk->close();
 
-            $id = intval($_GET['id']);
+            if ($count > 0) {
+                $_SESSION['error'] = 'No se puede eliminar el médico porque tiene citas asociadas.';
+                header('Location: ../pages/medicos.php');
+                exit();
+            }
 
-            if ($this->conn->query("DELETE FROM medicos WHERE id=$id")) {
+            $stmt = $this->conn->prepare("DELETE FROM medicos WHERE id=?");
+            $stmt->bind_param("i", $id);
+            if ($stmt->execute()) {
                 $_SESSION['success'] = "Médico eliminado exitosamente";
             } else {
-                $_SESSION['error'] = "Error al eliminar médico";
+                error_log("[MEDICOS] Error al eliminar medico id=$id: " . $stmt->error);
+                $_SESSION['error'] = "Error técnico al eliminar médico";
             }
+            $stmt->close();
 
             header("Location: ../pages/medicos.php");
             exit();

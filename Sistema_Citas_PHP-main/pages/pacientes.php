@@ -11,6 +11,11 @@ $mostrar_formulario = false;
 // Verificar acciones
 if (isset($_GET['action']) && $_GET['action'] == 'edit' && isset($_GET['id'])) {
     $paciente = $controller->obtenerPorId($_GET['id']);
+    if (!$paciente) {
+        $_SESSION['error'] = 'Paciente no encontrado. Probablemente fue eliminado.';
+        header('Location: pacientes.php');
+        exit();
+    }
     $mostrar_formulario = true;
 }
 
@@ -47,6 +52,7 @@ include '../includes/header.php';
                 </div>
                 <div class="card-body">
                     <form method="POST" onsubmit="return validarFormulario()" novalidate>
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(generate_csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
                         <input type="hidden" name="action" value="<?php echo $paciente ? 'update' : 'create'; ?>">
                         <?php if ($paciente): ?>
                             <input type="hidden" name="id" value="<?php echo $paciente['id']; ?>">

@@ -10,6 +10,11 @@ $mostrar_formulario = false;
 
 if (isset($_GET['action']) && $_GET['action'] == 'edit' && isset($_GET['id'])) {
     $cita = $controller->obtenerPorId($_GET['id']);
+    if (!$cita) {
+        $_SESSION['error'] = 'Cita no encontrada. Probablemente fue eliminada.';
+        header('Location: citas.php');
+        exit();
+    }
     $mostrar_formulario = true;
 }
 
@@ -48,6 +53,7 @@ include '../includes/header.php';
                 </div>
                 <div class="card-body">
                     <form method="POST" id="formCita" onsubmit="return validarFormularioCita()" novalidate>
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(generate_csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
                         <input type="hidden" name="action" value="<?php echo $cita ? 'update' : 'create'; ?>">
                         <?php if ($cita): ?>
                             <input type="hidden" name="id" value="<?php echo $cita['id']; ?>">
@@ -302,6 +308,7 @@ include '../includes/header.php';
                                             $badgeClass = $c['estado'] === 'completada' ? 'success' : 'warning';
                                             ?>
                                             <form method="POST" action="citas.php" class="d-flex align-items-center">
+                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(generate_csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
                                                 <input type="hidden" name="action" value="changeStatus">
                                                 <input type="hidden" name="id" value="<?php echo $c['id']; ?>">
                                                 <select name="estado"
