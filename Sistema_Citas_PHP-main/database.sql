@@ -85,6 +85,47 @@ CREATE TABLE IF NOT EXISTS citas_historial (
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+
+
+
+
+-- Extras tablas ideas
+-- Rol
+CREATE TABLE IF NOT EXISTS roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL UNIQUE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO roles (nombre) VALUES
+('jefe'),
+('empleado');
+
+-- Usuario
+CREATE TABLE IF NOT EXISTS usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario VARCHAR(50) NOT NULL UNIQUE,
+    contrasena VARCHAR(255) NOT NULL,
+    rol_id INT NOT NULL,
+    medico_id INT NULL,
+
+    estado ENUM('activo', 'inactivo') DEFAULT 'activo',
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_usuario_rol
+        FOREIGN KEY (rol_id) REFERENCES roles(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_usuario_medico
+        FOREIGN KEY (medico_id) REFERENCES medicos(id)
+        ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO usuarios (usuario, contrasena, rol_id, medico_id) VALUES
+('jefe', 'ececede', 1, 1), -- jefe
+('empleado', 'defefef', 2, NULL); -- empleado
+
+
+
 INSERT INTO pacientes (nombre, apellido, cedula, telefono, email, fecha_nacimiento) VALUES
 ('María', 'González', '0801-1990-12345', '+504 9876-5432', 'maria.gonzalez@email.com', '1990-05-15'),
 ('Carlos', 'Martínez', '0801-1985-54321', '+504 9876-5433', 'carlos.martinez@email.com', '1985-08-20'),
