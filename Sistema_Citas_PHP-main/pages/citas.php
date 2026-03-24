@@ -40,6 +40,7 @@ include '../includes/header.php';
 ?>
 
 <?php if ($mostrar_formulario): ?>
+    <?php $citaBloqueada = $cita && in_array($cita['estado'], ['cancelada', 'completada']); ?>
     <div class="row">
         <div class="col-md-8 mx-auto">
             <div class="card">
@@ -56,7 +57,8 @@ include '../includes/header.php';
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label for="paciente_id" class="form-label">Paciente *</label>
-                                <select class="form-select" id="paciente_id" name="paciente_id" required>
+                                <select class="form-select" id="paciente_id" name="paciente_id"
+                                    <?php echo $citaBloqueada ? 'disabled' : 'required'; ?>>
                                     <option value="">Seleccionar paciente...</option>
                                     <?php
                                     $selectedPaciente = $form_data['paciente_id'] ?? ($cita['paciente_id'] ?? '');
@@ -70,7 +72,8 @@ include '../includes/header.php';
                             </div>
                             <div class="col-md-6">
                                 <label for="medico_id" class="form-label">Médico *</label>
-                                <select class="form-select" id="medico_id" name="medico_id" required>
+                                <select class="form-select" id="medico_id" name="medico_id"
+                                    <?php echo $citaBloqueada ? 'disabled' : 'required'; ?>>
                                     <option value="">Seleccionar médico...</option>
                                     <?php
                                     $selectedMedico = $form_data['medico_id'] ?? ($cita['medico_id'] ?? '');
@@ -89,7 +92,8 @@ include '../includes/header.php';
                                 <label for="fecha" class="form-label">Fecha *</label>
                                 <input type="date" class="form-control" id="fecha" name="fecha"
                                     min="<?php echo (new DateTime('now', new DateTimeZone('America/Tegucigalpa')))->format('Y-m-d'); ?>"
-                                    value="<?php echo htmlspecialchars($form_data['fecha'] ?? ($cita['fecha'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required>
+                                    value="<?php echo htmlspecialchars($form_data['fecha'] ?? ($cita['fecha'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                    <?php echo $citaBloqueada ? 'disabled' : 'required'; ?>>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Hora *</label>
@@ -99,13 +103,17 @@ include '../includes/header.php';
                                 $selectedM = $selectedHora ? substr($selectedHora, 3, 2) : '00';
                                 ?>
                                 <div class="input-group">
-                                    <select class="form-select" id="hora_h" onchange="actualizarHora()">
+                                    <select class="form-select" id="hora_h"
+                                        <?php echo $citaBloqueada ? 'disabled' : ''; ?>
+                                        onchange="actualizarHora()">
                                         <?php for ($h = 0; $h <= 23; $h++): $hStr = sprintf('%02d', $h); ?>
                                             <option value="<?= $hStr ?>" <?= $selectedH === $hStr ? 'selected' : '' ?>><?= $hStr ?></option>
                                         <?php endfor; ?>
                                     </select>
                                     <span class="input-group-text fw-bold">:</span>
-                                    <select class="form-select" id="hora_m" onchange="actualizarHora()">
+                                    <select class="form-select" id="hora_m"
+                                        <?php echo $citaBloqueada ? 'disabled' : ''; ?>
+                                        onchange="actualizarHora()">
                                         <option value="00" <?= $selectedM === '00' ? 'selected' : '' ?>>00</option>
                                         <option value="30" <?= $selectedM === '30' ? 'selected' : '' ?>>30</option>
                                     </select>
@@ -118,23 +126,31 @@ include '../includes/header.php';
                             <label for="motivo" class="form-label">Motivo de la Consulta *</label>
                             <textarea class="form-control" id="motivo" name="motivo" rows="3"
                                 placeholder="Describa brevemente el motivo de la consulta..."
-                                minlength="10" required><?php echo htmlspecialchars($form_data['motivo'] ?? ($cita['motivo'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
-                            <div class="form-text">Mínimo 10 caracteres. Campo obligatorio.</div>
+                                <?php echo $citaBloqueada ? 'disabled' : 'minlength="10" required'; ?>
+                            ><?php echo htmlspecialchars($form_data['motivo'] ?? ($cita['motivo'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                            <?php if (!$citaBloqueada): ?>
+                                <div class="form-text">Mínimo 10 caracteres. Campo obligatorio.</div>
+                            <?php endif; ?>
                         </div>
 
                         <?php if ($cita): ?>
-                            <?php if ($cita['estado'] === 'cancelada'): ?>
-                                <div class="alert alert-warning d-flex align-items-start gap-2 mb-3">
-                                    <i class="bi bi-exclamation-triangle-fill fs-5 mt-1"></i>
+                            <?php if ($citaBloqueada): ?>
+                                <div class="alert alert-<?php echo $cita['estado'] === 'cancelada' ? 'warning' : 'info'; ?> d-flex align-items-start gap-2 mb-3">
+                                    <i class="bi bi-<?php echo $cita['estado'] === 'cancelada' ? 'exclamation-triangle-fill' : 'check-circle-fill'; ?> fs-5 mt-1"></i>
                                     <div>
-                                        <strong>Esta cita fue cancelada.</strong><br>
-                                        No se puede reactivar ni modificar. Si necesita continuar, <a href="?action=new">cree una nueva cita</a>.
+                                        <?php if ($cita['estado'] === 'cancelada'): ?>
+                                            <strong>Esta cita fue cancelada.</strong><br>
+                                            No se puede reactivar ni modificar. Si necesita continuar, <a href="?action=new">cree una nueva cita</a>.
+                                        <?php else: ?>
+                                            <strong>Esta cita ya fue completada.</strong><br>
+                                            No se puede modificar una cita completada. Si necesita continuar, <a href="?action=new">cree una nueva cita</a>.
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Estado</label>
                                     <select class="form-select" disabled style="opacity:.6">
-                                        <option selected>Cancelada</option>
+                                        <option selected><?php echo $cita['estado'] === 'cancelada' ? 'Cancelada' : 'Completada'; ?></option>
                                     </select>
                                 </div>
                             <?php else: ?>
@@ -159,9 +175,9 @@ include '../includes/header.php';
 
                         <div class="d-flex justify-content-between">
                             <a href="citas.php" class="btn btn-secondary">
-                                <i class="bi bi-arrow-left"></i> Cancelar
+                                <i class="bi bi-arrow-left"></i> Volver
                             </a>
-                            <?php if (!$cita || $cita['estado'] !== 'cancelada'): ?>
+                            <?php if (!$citaBloqueada): ?>
                                 <button type="submit" class="btn btn-primary">
                                     <i class="bi bi-save"></i> <?php echo $cita ? 'Actualizar' : 'Agendar'; ?>
                                 </button>
@@ -291,21 +307,25 @@ include '../includes/header.php';
                                     <td><span class="badge bg-info text-dark"><?php echo normalizar_texto($c['especialidad']); ?></span></td>
                                     <td><?php echo substr($c['motivo'], 0, 40); ?><?php echo strlen($c['motivo']) > 40 ? '...' : ''; ?></td>
                                     <td>
-                                        <?php if ($c['estado'] === 'cancelada'): ?>
-                                            <select class="form-select form-select-sm" disabled
-                                                style="width:auto;min-width:120px;opacity:.6;cursor:not-allowed"
-                                                title="Cita cancelada. Cree una nueva cita para continuar.">
-                                                <option selected>Cancelada</option>
+                                        <?php if (in_array($c['estado'], ['cancelada', 'completada'])): ?>
+                                            <?php
+                                            $labelFinal = $c['estado'] === 'cancelada' ? 'Cancelada' : 'Completada';
+                                            $titleFinal = $c['estado'] === 'cancelada'
+                                                ? 'Cita cancelada. Cree una nueva cita para continuar.'
+                                                : 'Cita completada. No se puede modificar el estado.';
+                                            $colorFinal = $c['estado'] === 'cancelada' ? 'danger' : 'success';
+                                            ?>
+                                            <select class="form-select form-select-sm border-<?php echo $colorFinal; ?>" disabled
+                                                style="width:auto;min-width:120px;opacity:.65;cursor:not-allowed"
+                                                title="<?php echo $titleFinal; ?>">
+                                                <option selected><?php echo $labelFinal; ?></option>
                                             </select>
                                         <?php else: ?>
-                                            <?php
-                                            $badgeClass = $c['estado'] === 'completada' ? 'success' : 'warning';
-                                            ?>
                                             <form method="POST" action="citas.php" class="d-flex align-items-center">
                                                 <input type="hidden" name="action" value="changeStatus">
                                                 <input type="hidden" name="id" value="<?php echo $c['id']; ?>">
                                                 <select name="estado"
-                                                    class="form-select form-select-sm border-<?php echo $badgeClass; ?>"
+                                                    class="form-select form-select-sm border-warning"
                                                     onchange="this.form.submit()"
                                                     style="width:auto;min-width:120px">
                                                     <option value="pendiente"  <?php echo $c['estado'] == 'pendiente'  ? 'selected' : ''; ?>>Pendiente</option>
@@ -317,7 +337,7 @@ include '../includes/header.php';
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm" role="group">
-                                            <a href="?action=edit&id=<?php echo $c['id']; ?>" class="btn btn-outline-primary" title="Editar">
+                                            <a href="?action=edit&id=<?php echo $c['id']; ?>" class="btn btn-outline-primary" title="Ver detalle">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
                                             <button type="button" class="btn btn-outline-danger"
