@@ -104,11 +104,11 @@ INSERT INTO roles (nombre) VALUES
 CREATE TABLE IF NOT EXISTS usuarios (
     id INT AUTO_INCREMENT PRIMARY KEY,
     usuario VARCHAR(50) NOT NULL UNIQUE,
-    contrasena VARCHAR(255) NOT NULL,
+    contrasena VARCHAR(255),
     rol_id INT NOT NULL,
     medico_id INT NULL,
 
-    estado ENUM('activo', 'inactivo') DEFAULT 'activo',
+    estado ENUM('activo', 'inactivo') DEFAULT 'inactivo',
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_usuario_rol
@@ -120,9 +120,9 @@ CREATE TABLE IF NOT EXISTS usuarios (
         ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO usuarios (usuario, contrasena, rol_id, medico_id) VALUES
-('jefe', 'ececede', 1, 1), -- jefe
-('empleado', 'defefef', 2, NULL); -- empleado
+INSERT INTO usuarios (usuario, contrasena, rol_id, medico_id, estado) VALUES
+('jefe', '1234', 1, 1, 'activo'), -- jefe
+('empleado', '1234', 2, NULL, 'activo'); -- empleado
 
 
 

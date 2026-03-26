@@ -116,6 +116,13 @@
                                 Historial Citas
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php echo isset($current_page) && $current_page == 'usuarios' ? 'active' : ''; ?> rounded"
+                                href="<?php echo basename($_SERVER['PHP_SELF']) == 'usuarios.php' ? '#' : (basename($_SERVER['PHP_SELF']) == 'index.php' ? 'pages/usuarios.php' : 'usuarios.php'); ?>">
+                                <i class="bi bi-people"></i>
+                                Usuarios
+                            </a>
+                        </li>
                     </ul>
 
                     <hr>
