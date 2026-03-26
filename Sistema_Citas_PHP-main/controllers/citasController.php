@@ -110,8 +110,8 @@ class CitasController
                 // Estado anterior
                 $citaAnterior = $this->conn->query("SELECT * FROM citas WHERE id=$id")->fetch_assoc();
 
-                if ($citaAnterior && $citaAnterior['estado'] === 'cancelada') {
-                    $_SESSION['error'] = 'No se puede modificar una cita cancelada. Cree una nueva cita para continuar.';
+                if ($citaAnterior && in_array($citaAnterior['estado'], ['cancelada', 'completada'])) {
+                    $_SESSION['error'] = 'No se puede modificar una cita ' . $citaAnterior['estado'] . '. Cree una nueva cita para continuar.';
                     header("Location: ../pages/citas.php?action=edit&id=$id");
                     exit();
                 }
@@ -130,7 +130,7 @@ class CitasController
                     header("Location: ../pages/citas.php?action=edit&id=$id");
                     exit();
                 } else {
-                    // Tpo de cambio
+                    // Tipo de cambio
                     $tipo_cambio = "modificacion";
                     if ($estado == "cancelada") {
                         $tipo_cambio = "cancelacion";
@@ -140,7 +140,7 @@ class CitasController
                         $tipo_cambio = "reprogramacion";
                     }
 
-                    // Guardar en la tabla de hisotorial de citas
+                    // Guardar en la tabla de historial de citas
                     $sqlHistorial = "INSERT INTO citas_historial(
                     cita_id,
                     tipo_cambio,
@@ -266,8 +266,8 @@ class CitasController
             if ($id > 0 && in_array($nuevo_estado, $estados_validos)) {
                 $citaAnterior = $this->conn->query("SELECT * FROM citas WHERE id=$id")->fetch_assoc();
 
-                if ($citaAnterior && $citaAnterior['estado'] === 'cancelada') {
-                    $_SESSION['error'] = 'No se puede reactivar una cita cancelada. Cree una nueva cita para continuar.';
+                if ($citaAnterior && in_array($citaAnterior['estado'], ['cancelada', 'completada'])) {
+                    $_SESSION['error'] = 'No se puede modificar una cita ' . $citaAnterior['estado'] . '. Cree una nueva cita para continuar.';
                     header('Location: ../pages/citas.php');
                     exit();
                 }
