@@ -1,6 +1,13 @@
 <?php
 require_once 'includes/config.php';
 
+//ESTO ES TEMPORAL, SOLO ES PARA VER SI FUNCIONA QUE SE GUARDEN CREDENCIALES EN SESION
+session_start();
+$user= $_SESSION['usuario'];
+$rol = $_SESSION['rol'];
+$id = $_SESSION['user_id'];
+//
+
 $total_pacientes = $conn->query("SELECT COUNT(*) as total FROM pacientes")->fetch_assoc()['total'];
 $total_medicos   = $conn->query("SELECT COUNT(*) as total FROM medicos")->fetch_assoc()['total'];
 $total_citas     = $conn->query("SELECT COUNT(*) as total FROM citas")->fetch_assoc()['total'];
@@ -11,7 +18,7 @@ $hoy = (new DateTime('now', new DateTimeZone('America/Tegucigalpa')))->format('Y
 // ── Parámetros de filtro / búsqueda ──────────────────────────────────────────
 $fecha_filtro  = isset($_GET['fecha_filtro'])  && $_GET['fecha_filtro']  !== '' ? $_GET['fecha_filtro']  : $hoy;
 $estado_filtro = isset($_GET['estado_filtro']) && in_array($_GET['estado_filtro'], ['pendiente', 'completada', 'cancelada'])
-                 ? $_GET['estado_filtro'] : '';
+    ? $_GET['estado_filtro'] : '';
 $buscar        = trim($_GET['buscar'] ?? '');
 $orden         = $_GET['orden'] ?? 'hora_asc';
 
@@ -80,6 +87,11 @@ include 'includes/header.php';
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
+                        <!-- ES TEMPORAL -->
+                        <p><?php echo $user; ?></p>
+                        <p><?php echo $rol; ?></p>
+                        <p><?php echo $id; ?></p>
+                        <!--  -->
                         <h6 class="text-muted mb-2">Total Pacientes</h6>
                         <h2 class="mb-0"><?php echo $total_pacientes; ?></h2>
                     </div>
@@ -181,19 +193,19 @@ include 'includes/header.php';
                         <label class="form-label small text-muted">Estado</label>
                         <select name="estado_filtro" class="form-select form-select-sm">
                             <option value="">Todos</option>
-                            <option value="pendiente"  <?php echo $estado_filtro === 'pendiente'  ? 'selected' : ''; ?>>Pendiente</option>
+                            <option value="pendiente" <?php echo $estado_filtro === 'pendiente'  ? 'selected' : ''; ?>>Pendiente</option>
                             <option value="completada" <?php echo $estado_filtro === 'completada' ? 'selected' : ''; ?>>Completada</option>
-                            <option value="cancelada"  <?php echo $estado_filtro === 'cancelada'  ? 'selected' : ''; ?>>Cancelada</option>
+                            <option value="cancelada" <?php echo $estado_filtro === 'cancelada'  ? 'selected' : ''; ?>>Cancelada</option>
                         </select>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label small text-muted">Ordenar por</label>
                         <select name="orden" class="form-select form-select-sm">
-                            <option value="hora_asc"  <?php echo $orden === 'hora_asc'  ? 'selected' : ''; ?>>Fecha/Hora ↑</option>
+                            <option value="hora_asc" <?php echo $orden === 'hora_asc'  ? 'selected' : ''; ?>>Fecha/Hora ↑</option>
                             <option value="hora_desc" <?php echo $orden === 'hora_desc' ? 'selected' : ''; ?>>Fecha/Hora ↓</option>
-                            <option value="estado"    <?php echo $orden === 'estado'    ? 'selected' : ''; ?>>Estado</option>
-                            <option value="paciente"  <?php echo $orden === 'paciente'  ? 'selected' : ''; ?>>Paciente</option>
-                            <option value="medico"    <?php echo $orden === 'medico'    ? 'selected' : ''; ?>>Médico</option>
+                            <option value="estado" <?php echo $orden === 'estado'    ? 'selected' : ''; ?>>Estado</option>
+                            <option value="paciente" <?php echo $orden === 'paciente'  ? 'selected' : ''; ?>>Paciente</option>
+                            <option value="medico" <?php echo $orden === 'medico'    ? 'selected' : ''; ?>>Médico</option>
                         </select>
                     </div>
                     <div class="col-md-3">
@@ -228,23 +240,23 @@ include 'includes/header.php';
                             </thead>
                             <tbody>
                                 <?php while ($cita = $citas_result->fetch_assoc()): ?>
-                                <tr>
-                                    <td><?php echo date('d/m/Y', strtotime($cita['fecha'])); ?></td>
-                                    <td><strong><?php echo date('H:i', strtotime($cita['hora'])); ?></strong></td>
-                                    <td><?php echo normalizar_texto($cita['paciente_nombre']); ?></td>
-                                    <td>Dr. <?php echo normalizar_texto($cita['medico_nombre']); ?></td>
-                                    <td><span class="badge bg-info text-dark"><?php echo normalizar_texto($cita['especialidad']); ?></span></td>
-                                    <td><?php echo htmlspecialchars(substr($cita['motivo'], 0, 45), ENT_QUOTES, 'UTF-8'); ?><?php echo strlen($cita['motivo']) > 45 ? '…' : ''; ?></td>
-                                    <td>
-                                        <?php if ($cita['estado'] === 'pendiente'): ?>
-                                            <span class="badge bg-warning text-dark">Pendiente</span>
-                                        <?php elseif ($cita['estado'] === 'completada'): ?>
-                                            <span class="badge bg-success">Completada</span>
-                                        <?php else: ?>
-                                            <span class="badge bg-secondary">Cancelada</span>
-                                        <?php endif; ?>
-                                    </td>
-                                </tr>
+                                    <tr>
+                                        <td><?php echo date('d/m/Y', strtotime($cita['fecha'])); ?></td>
+                                        <td><strong><?php echo date('H:i', strtotime($cita['hora'])); ?></strong></td>
+                                        <td><?php echo normalizar_texto($cita['paciente_nombre']); ?></td>
+                                        <td>Dr. <?php echo normalizar_texto($cita['medico_nombre']); ?></td>
+                                        <td><span class="badge bg-info text-dark"><?php echo normalizar_texto($cita['especialidad']); ?></span></td>
+                                        <td><?php echo htmlspecialchars(substr($cita['motivo'], 0, 45), ENT_QUOTES, 'UTF-8'); ?><?php echo strlen($cita['motivo']) > 45 ? '…' : ''; ?></td>
+                                        <td>
+                                            <?php if ($cita['estado'] === 'pendiente'): ?>
+                                                <span class="badge bg-warning text-dark">Pendiente</span>
+                                            <?php elseif ($cita['estado'] === 'completada'): ?>
+                                                <span class="badge bg-success">Completada</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-secondary">Cancelada</span>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
                                 <?php endwhile; ?>
                             </tbody>
                         </table>
