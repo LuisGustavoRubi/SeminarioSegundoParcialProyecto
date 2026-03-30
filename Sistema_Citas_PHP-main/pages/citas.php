@@ -18,13 +18,14 @@ if (isset($_GET['action']) && $_GET['action'] == 'new') {
 }
 
 if ($mostrar_formulario) {
-    $pacientes = $controller->obtenerPacientes();
-    $medicos = $controller->obtenerMedicos();
+    $pacientes   = $controller->obtenerPacientes();
+    $medicos     = $controller->obtenerMedicos();
+    $enfermedades = $controller->obtenerEnfermedades();
 } else {
-    $citas = $controller->obtenerTodas();
+    $citas        = $controller->obtenerTodas();
+    $enfermedades = $controller->obtenerEnfermedades();
 }
 
-// Recuperar datos de formulario si hubo error de validación
 $form_data = null;
 if (isset($_SESSION['form_data'])) {
     $form_data = $_SESSION['form_data'];
@@ -157,7 +158,8 @@ include '../includes/header.php';
                                 <div class="mb-3">
                                     <label for="estado" class="form-label">Estado *</label>
                                     <?php $selectedEstado = $form_data['estado'] ?? $cita['estado']; ?>
-                                    <select class="form-select" id="estado" name="estado" required>
+                                    <select class="form-select" id="estado" name="estado" required
+                                        onchange="manejarCambioEstadoFormulario(this.value, <?php echo $cita['id']; ?>)">
                                         <option value="pendiente"  <?php echo $selectedEstado == 'pendiente'  ? 'selected' : ''; ?>>Pendiente</option>
                                         <option value="completada" <?php echo $selectedEstado == 'completada' ? 'selected' : ''; ?>>Completada</option>
                                         <option value="cancelada"  <?php echo $selectedEstado == 'cancelada'  ? 'selected' : ''; ?>>Cancelada</option>
@@ -170,6 +172,9 @@ include '../includes/header.php';
                                 </div>
                             <?php endif; ?>
                         <?php endif; ?>
+
+                        <!-- Campo oculto para enfermedad (se llena desde el modal) -->
+                        <input type="hidden" name="enfermedad_id" id="enfermedad_id_form" value="0">
 
                         <hr class="my-4">
 
@@ -186,76 +191,6 @@ include '../includes/header.php';
                     </form>
                 </div>
             </div>
-
-    <script>
-        function actualizarHora() {
-            const h = document.getElementById('hora_h').value;
-            const m = document.getElementById('hora_m').value;
-            document.getElementById('hora').value = h + ':' + m;
-        }
-        actualizarHora();
-
-        function validarFormularioCita() {
-            const paciente = document.getElementById('paciente_id').value;
-            const medico   = document.getElementById('medico_id').value;
-            const fecha    = document.getElementById('fecha').value.trim();
-            const hora     = document.getElementById('hora').value.trim();
-            const motivo   = document.getElementById('motivo').value.trim();
-
-            const faltantes = [];
-            if (!paciente) faltantes.push('Paciente');
-            if (!medico)   faltantes.push('Médico');
-            if (!fecha)    faltantes.push('Fecha');
-            if (!hora)     faltantes.push('Hora');
-            if (!motivo)   faltantes.push('Motivo de consulta');
-
-            if (faltantes.length > 0) {
-                Swal.fire({
-                    icon:  'error',
-                    title: 'Campos obligatorios incompletos',
-                    html:  'Por favor complete los siguientes campos:<br><strong>' + faltantes.join(', ') + '</strong>'
-                });
-                return false;
-            }
-
-            if (motivo.length < 10) {
-                Swal.fire({
-                    icon:  'error',
-                    title: 'Motivo muy corto',
-                    html:  'El motivo de consulta debe tener al menos <strong>10 caracteres</strong>.'
-                });
-                return false;
-            }
-
-            const hoy = new Date();
-            const hoyStr = hoy.getFullYear() + '-' +
-                String(hoy.getMonth() + 1).padStart(2, '0') + '-' +
-                String(hoy.getDate()).padStart(2, '0');
-            if (fecha < hoyStr) {
-                Swal.fire({
-                    icon:  'error',
-                    title: 'Fecha inválida',
-                    html:  'No se pueden agendar citas en fechas pasadas.<br>Seleccione <strong>hoy o una fecha futura</strong>.'
-                });
-                return false;
-            }
-
-            if (fecha === hoyStr) {
-                const ahoraStr = String(hoy.getHours()).padStart(2, '0') + ':' +
-                    String(hoy.getMinutes()).padStart(2, '0');
-                if (hora < ahoraStr) {
-                    Swal.fire({
-                        icon:  'error',
-                        title: 'Hora inválida',
-                        html:  'Para citas de hoy, la hora debe ser <strong>posterior a la hora actual</strong>.'
-                    });
-                    return false;
-                }
-            }
-
-            return true;
-        }
-    </script>
 
             <div class="card mt-3">
                 <div class="card-body">
@@ -310,29 +245,21 @@ include '../includes/header.php';
                                         <?php if (in_array($c['estado'], ['cancelada', 'completada'])): ?>
                                             <?php
                                             $labelFinal = $c['estado'] === 'cancelada' ? 'Cancelada' : 'Completada';
-                                            $titleFinal = $c['estado'] === 'cancelada'
-                                                ? 'Cita cancelada. Cree una nueva cita para continuar.'
-                                                : 'Cita completada. No se puede modificar el estado.';
                                             $colorFinal = $c['estado'] === 'cancelada' ? 'danger' : 'success';
                                             ?>
                                             <select class="form-select form-select-sm border-<?php echo $colorFinal; ?>" disabled
-                                                style="width:auto;min-width:120px;opacity:.65;cursor:not-allowed"
-                                                title="<?php echo $titleFinal; ?>">
+                                                style="width:auto;min-width:120px;opacity:.65;cursor:not-allowed">
                                                 <option selected><?php echo $labelFinal; ?></option>
                                             </select>
                                         <?php else: ?>
-                                            <form method="POST" action="citas.php" class="d-flex align-items-center">
-                                                <input type="hidden" name="action" value="changeStatus">
-                                                <input type="hidden" name="id" value="<?php echo $c['id']; ?>">
-                                                <select name="estado"
-                                                    class="form-select form-select-sm border-warning"
-                                                    onchange="this.form.submit()"
-                                                    style="width:auto;min-width:120px">
-                                                    <option value="pendiente"  <?php echo $c['estado'] == 'pendiente'  ? 'selected' : ''; ?>>Pendiente</option>
-                                                    <option value="completada" <?php echo $c['estado'] == 'completada' ? 'selected' : ''; ?>>Completada</option>
-                                                    <option value="cancelada">Cancelada</option>
-                                                </select>
-                                            </form>
+                                            <select class="form-select form-select-sm border-warning"
+                                                onchange="manejarCambioEstado(this, <?php echo $c['id']; ?>)"
+                                                style="width:auto;min-width:120px"
+                                                data-estado-actual="<?php echo $c['estado']; ?>">
+                                                <option value="pendiente"  <?php echo $c['estado'] == 'pendiente'  ? 'selected' : ''; ?>>Pendiente</option>
+                                                <option value="completada" <?php echo $c['estado'] == 'completada' ? 'selected' : ''; ?>>Completada</option>
+                                                <option value="cancelada">Cancelada</option>
+                                            </select>
                                         <?php endif; ?>
                                     </td>
                                     <td>
@@ -364,5 +291,186 @@ include '../includes/header.php';
         </div>
     </div>
 <?php endif; ?>
+
+<!-- ====== MODAL ENFERMEDAD ====== -->
+<div id="modalEnfermedad" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:8px; padding:28px; min-width:360px; max-width:95%; box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+        <h5 class="mb-1"><i class="bi bi-check-circle-fill text-success"></i> Completar cita</h5>
+        <p class="text-muted mb-3" style="font-size:.9rem">Seleccione la enfermedad diagnosticada para marcar la cita como completada.</p>
+
+        <label for="modal_enfermedad_id" class="form-label fw-semibold">Enfermedad *</label>
+        <select id="modal_enfermedad_id" class="form-select mb-4">
+            <option value="">-- Seleccione una enfermedad --</option>
+            <?php
+            // Rebobinar el resultado para usarlo en el modal
+            $enfermedades->data_seek(0);
+            while ($e = $enfermedades->fetch_assoc()): ?>
+                <option value="<?= $e['id'] ?>"><?= htmlspecialchars($e['nombre']) ?></option>
+            <?php endwhile; ?>
+        </select>
+
+        <!-- Formulario oculto para el atajo rápido (listado) -->
+        <form id="formChangeStatus" method="POST" action="citas.php" style="display:none">
+            <input type="hidden" name="action" value="changeStatus">
+            <input type="hidden" name="estado" value="completada">
+            <input type="hidden" name="id" id="modal_cita_id">
+            <input type="hidden" name="enfermedad_id" id="modal_enfermedad_hidden">
+        </form>
+
+        <div class="d-flex gap-2 justify-content-end">
+            <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+            <button type="button" class="btn btn-success" onclick="confirmarEnfermedad()">
+                <i class="bi bi-check-lg"></i> Completar cita
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ── Variables de contexto del modal ──
+    let _modalOrigen = null; // 'listado' o 'formulario'
+    let _selectOriginal = null; // referencia al select del listado para revertir si cancela
+
+    function abrirModal(citaId, origen, selectRef = null) {
+        document.getElementById('modal_cita_id').value = citaId;
+        document.getElementById('modal_enfermedad_id').value = '';
+        _modalOrigen   = origen;
+        _selectOriginal = selectRef;
+        document.getElementById('modalEnfermedad').style.display = 'flex';
+    }
+
+    function cerrarModal() {
+        // Si vino del listado, revertir el select al estado anterior
+        if (_selectOriginal) {
+            _selectOriginal.value = _selectOriginal.dataset.estadoActual;
+        }
+        // Si vino del formulario, revertir el select de estado a pendiente
+        if (_modalOrigen === 'formulario') {
+            const sel = document.getElementById('estado');
+            if (sel) sel.value = 'pendiente';
+        }
+        document.getElementById('modalEnfermedad').style.display = 'none';
+    }
+
+    function confirmarEnfermedad() {
+        const enfermedadId = document.getElementById('modal_enfermedad_id').value;
+        if (!enfermedadId) {
+            alert('Por favor seleccione una enfermedad.');
+            return;
+        }
+
+        if (_modalOrigen === 'listado') {
+            // Enviar el formulario oculto de changeStatus
+            document.getElementById('modal_enfermedad_hidden').value = enfermedadId;
+            document.getElementById('formChangeStatus').submit();
+        } else if (_modalOrigen === 'formulario') {
+            // Llenar el campo oculto del formulario principal y dejarlo continuar
+            document.getElementById('enfermedad_id_form').value = enfermedadId;
+            document.getElementById('modalEnfermedad').style.display = 'none';
+            document.getElementById('formCita').submit();
+        }
+    }
+
+    // Cerrar modal al hacer clic fuera
+    document.getElementById('modalEnfermedad').addEventListener('click', function(e) {
+        if (e.target === this) cerrarModal();
+    });
+
+    // ── Atajo rápido del listado ──
+    function manejarCambioEstado(selectEl, citaId) {
+        const nuevoEstado = selectEl.value;
+        if (nuevoEstado === 'completada') {
+            abrirModal(citaId, 'listado', selectEl);
+        } else {
+            // Para otros estados, enviar directo
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'citas.php';
+            form.innerHTML = `
+                <input type="hidden" name="action" value="changeStatus">
+                <input type="hidden" name="id" value="${citaId}">
+                <input type="hidden" name="estado" value="${nuevoEstado}">
+            `;
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
+    // ── Formulario de edición ──
+    function manejarCambioEstadoFormulario(nuevoEstado, citaId) {
+        if (nuevoEstado === 'completada') {
+            abrirModal(citaId, 'formulario');
+        }
+    }
+
+    // ── Validación del formulario principal ──
+    function actualizarHora() {
+        const h = document.getElementById('hora_h').value;
+        const m = document.getElementById('hora_m').value;
+        document.getElementById('hora').value = h + ':' + m;
+    }
+    actualizarHora();
+
+    function validarFormularioCita() {
+        const paciente = document.getElementById('paciente_id')?.value;
+        const medico   = document.getElementById('medico_id')?.value;
+        const fecha    = document.getElementById('fecha')?.value.trim();
+        const hora     = document.getElementById('hora')?.value.trim();
+        const motivo   = document.getElementById('motivo')?.value.trim();
+        const estado   = document.getElementById('estado')?.value;
+
+        // Si se seleccionó completada y aún no pasó por el modal, abrirlo
+        if (estado === 'completada' && (!document.getElementById('enfermedad_id_form').value || document.getElementById('enfermedad_id_form').value == '0')) {
+            const citaId = document.querySelector('input[name="id"]')?.value;
+            abrirModal(citaId, 'formulario');
+            return false;
+        }
+
+        const faltantes = [];
+        if (!paciente) faltantes.push('Paciente');
+        if (!medico)   faltantes.push('Médico');
+        if (!fecha)    faltantes.push('Fecha');
+        if (!hora)     faltantes.push('Hora');
+        if (!motivo)   faltantes.push('Motivo de consulta');
+
+        if (faltantes.length > 0) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Campos obligatorios incompletos',
+                html: 'Por favor complete los siguientes campos:<br><strong>' + faltantes.join(', ') + '</strong>'
+            });
+            return false;
+        }
+
+        if (motivo.length < 10) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Motivo muy corto',
+                html: 'El motivo de consulta debe tener al menos <strong>10 caracteres</strong>.'
+            });
+            return false;
+        }
+
+        const hoy    = new Date();
+        const hoyStr = hoy.getFullYear() + '-' +
+            String(hoy.getMonth() + 1).padStart(2, '0') + '-' +
+            String(hoy.getDate()).padStart(2, '0');
+
+        if (fecha < hoyStr) {
+            Swal.fire({ icon: 'error', title: 'Fecha inválida', html: 'No se pueden agendar citas en fechas pasadas.' });
+            return false;
+        }
+
+        if (fecha === hoyStr) {
+            const ahoraStr = String(hoy.getHours()).padStart(2, '0') + ':' + String(hoy.getMinutes()).padStart(2, '0');
+            if (hora < ahoraStr) {
+                Swal.fire({ icon: 'error', title: 'Hora inválida', html: 'Para citas de hoy, la hora debe ser posterior a la hora actual.' });
+                return false;
+            }
+        }
+
+        return true;
+    }
+</script>
 
 <?php include '../includes/footer.php'; ?>

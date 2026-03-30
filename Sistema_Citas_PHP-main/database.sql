@@ -25,10 +25,16 @@ CREATE TABLE IF NOT EXISTS medicos (
     fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS enfermedades (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(150) NOT NULL UNIQUE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS citas (
     id INT AUTO_INCREMENT PRIMARY KEY,
     paciente_id INT NOT NULL,
     medico_id INT NOT NULL,
+    enfermedad_id INT NULL,
     fecha DATE NOT NULL,
     hora TIME NOT NULL,
     motivo TEXT,
@@ -39,7 +45,10 @@ CREATE TABLE IF NOT EXISTS citas (
         ON DELETE CASCADE,
     CONSTRAINT fk_citas_medico
         FOREIGN KEY (medico_id) REFERENCES medicos(id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT fk_citas_enfermedad
+        FOREIGN KEY (enfermedad_id) REFERENCES enfermedades(id)
+        ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS citas_historial (
@@ -47,26 +56,19 @@ CREATE TABLE IF NOT EXISTS citas_historial (
     cita_id             INT NOT NULL,
     tipo_cambio         ENUM('modificacion', 'cancelacion', 'reprogramacion') NOT NULL,
     observacion         TEXT,
-
-    -- Estado anterior
     anterior_paciente_id INT,
     anterior_medico_id   INT,
     anterior_fecha       DATE NOT NULL,
     anterior_hora        TIME NOT NULL,
     anterior_motivo      TEXT,
     anterior_estado      ENUM('pendiente', 'completada', 'cancelada') NOT NULL,
-
-    -- Estado nuevo
     nuevo_paciente_id    INT,
     nuevo_medico_id      INT,
     nuevo_fecha          DATE NOT NULL,
     nuevo_hora           TIME NOT NULL,
     nuevo_motivo         TEXT,
     nuevo_estado         ENUM('pendiente', 'completada', 'cancelada') NOT NULL,
-
-    -- Auditoría
     fecha_cambio         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
     CONSTRAINT fk_historial_cita
         FOREIGN KEY (cita_id) REFERENCES citas(id)
         ON DELETE CASCADE,
@@ -80,66 +82,64 @@ CREATE TABLE IF NOT EXISTS citas_historial (
         FOREIGN KEY (nuevo_paciente_id) REFERENCES pacientes(id)
         ON DELETE SET NULL,
     CONSTRAINT fk_historial_nvo_medico
-        FOREIGN KEY (nuevo_medico_id) REFERENCES medicos(id)
+        FOREIGN KEY (nuevo_medico_id)FERENCES medicos(id)
         ON DELETE SET NULL
-
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-
-
-
-
--- Extras tablas ideas
--- Rol
 CREATE TABLE IF NOT EXISTS roles (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(50) NOT NULL UNIQUE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO roles (nombre) VALUES
-('jefe'),
-('empleado');
-
--- Usuario
 CREATE TABLE IF NOT EXISTS usuarios (
     id INT AUTO_INCREMENT PRIMARY KEY,
     usuario VARCHAR(50) NOT NULL UNIQUE,
     contrasena VARCHAR(255),
     rol_id INT NOT NULL,
     medico_id INT NULL,
-
     estado ENUM('activo', 'inactivo') DEFAULT 'inactivo',
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
     CONSTRAINT fk_usuario_rol
         FOREIGN KEY (rol_id) REFERENCES roles(id)
         ON DELETE CASCADE,
-
     CONSTRAINT fk_usuario_medico
         FOREIGN KEY (medico_id) REFERENCES medicos(id)
         ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO usuarios (usuario, contrasena, rol_id, medico_id, estado) VALUES
-('jefe', '1234', 1, 1, 'activo'), -- jefe
-('empleado', '1234', 2, NULL, 'activo'); -- empleado
+-- Datos de ejemplo
+INSERT IGNORE INTO enfermedades (nombre) VALUES
+('Hipertensión arterial'),
+('Diabetes mellitus tipo 2'),
+('Gripe / Influenza'),
+('Infección respiratoria aguda'),
+('Gastritis'),
+('Dermatitis'),
+('Anemia'),
+('Asma');
 
+INSERT IGNORE INTO roles (nombre) VALUES
+('jefe'),
+('empleado');
 
+INSERT IGNORE INTO medicos (nombre, apellido, especialidad, telefono, email) VALUES
+('Roberto', 'Flores', 'Medicina General', '+504 2234-5678', 'dr.flores@hospital.com'),
+('Patricia', 'Sánchez', 'Pediatría', '+504 2234-5679', 'dra.sanchez@hospital.com'),
+('Miguel', 'Ramírez', 'Cardiología', '+504 2234-5680', 'dr.ramirez@hospital.com'),
+('Elena', 'Torres', 'Dermatología', '+504 2234-5681', 'dra.torres@hospital.com');
 
-INSERT INTO pacientes (nombre, apellido, cedula, telefono, email, fecha_nacimiento) VALUES
+INSERT IGNORE INTO usuarios (usuario, contrasena, rol_id, medico_id, estado) VALUES
+('jefe', '1234', 1, 1, 'activo'),
+('empleado', '1234', 2, NULL, 'activo');
+
+INSERT IGNORE INTO pacientes (nombre, apellido, cedula, telefono, email, fecha_nacimiento) VALUES
 ('María', 'González', '0801-1990-12345', '+504 9876-5432', 'maria.gonzalez@email.com', '1990-05-15'),
 ('Carlos', 'Martínez', '0801-1985-54321', '+504 9876-5433', 'carlos.martinez@email.com', '1985-08-20'),
 ('Ana', 'López', '0801-1992-11111', '+504 9876-5434', 'ana.lopez@email.com', '1992-03-10'),
 ('José', 'Hernández', '0801-1988-22222', '+504 9876-5435', 'jose.hernandez@email.com', '1988-11-25'),
 ('Laura', 'Rodríguez', '0801-1995-33333', '+504 9876-5436', 'laura.rodriguez@email.com', '1995-07-05');
 
-INSERT INTO medicos (nombre, apellido, especialidad, telefono, email) VALUES
-('Roberto', 'Flores', 'Medicina General', '+504 2234-5678', 'dr.flores@hospital.com'),
-('Patricia', 'Sánchez', 'Pediatría', '+504 2234-5679', 'dra.sanchez@hospital.com'),
-('Miguel', 'Ramírez', 'Cardiología', '+504 2234-5680', 'dr.ramirez@hospital.com'),
-('Elena', 'Torres', 'Dermatología', '+504 2234-5681', 'dra.torres@hospital.com');
-
-INSERT INTO citas (paciente_id, medico_id, fecha, hora, motivo, estado) VALUES
+INSERT IGNORE INTO citas (paciente_id, medico_id, fecha, hora, motivo, estado) VALUES
 (1, 1, CURDATE(), '09:00:00', 'Control de rutina', 'pendiente'),
 (2, 2, CURDATE(), '10:00:00', 'Vacunación infantil', 'pendiente'),
 (3, 3, CURDATE(), '11:00:00', 'Dolor en el pecho', 'completada'),
