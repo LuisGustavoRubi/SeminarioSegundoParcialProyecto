@@ -60,10 +60,12 @@ $order_sql = $order_map[$orden] ?? 'c.fecha ASC, c.hora ASC';
 $sql_citas = "SELECT c.*,
               CONCAT(p.nombre, ' ', p.apellido) AS paciente_nombre,
               CONCAT(m.nombre, ' ', m.apellido) AS medico_nombre,
-              m.especialidad
+              m.especialidad,
+              l.nombre AS localidad
               FROM citas c
               INNER JOIN pacientes p ON c.paciente_id = p.id
               INNER JOIN medicos m   ON c.medico_id   = m.id
+              INNER JOIN localidades l ON c.localidad_id = l.id
               $where_sql
               ORDER BY $order_sql";
 $citas_result = $conn->query($sql_citas);
@@ -234,6 +236,7 @@ include 'includes/header.php';
                                     <th>Paciente</th>
                                     <th>Médico</th>
                                     <th>Especialidad</th>
+                                    <th>Localidad</th>
                                     <th>Motivo</th>
                                     <th>Estado</th>
                                 </tr>
@@ -243,9 +246,10 @@ include 'includes/header.php';
                                     <tr>
                                         <td><?php echo date('d/m/Y', strtotime($cita['fecha'])); ?></td>
                                         <td><strong><?php echo date('H:i', strtotime($cita['hora'])); ?></strong></td>
-                                        <td><?php echo normalizar_texto($cita['paciente_nombre']); ?></td>
-                                        <td>Dr. <?php echo normalizar_texto($cita['medico_nombre']); ?></td>
-                                        <td><span class="badge bg-info text-dark"><?php echo normalizar_texto($cita['especialidad']); ?></span></td>
+                                        <td><?php echo htmlspecialchars($cita['paciente_nombre'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                        <td>Dr. <?php echo htmlspecialchars($cita['medico_nombre'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                        <td><span class="badge bg-info text-dark"><?php echo htmlspecialchars($cita['especialidad'], ENT_QUOTES, 'UTF-8'); ?></span></td>
+                                        <td><?php echo htmlspecialchars($cita['localidad'], ENT_QUOTES, 'UTF-8'); ?></td>
                                         <td><?php echo htmlspecialchars(substr($cita['motivo'], 0, 45), ENT_QUOTES, 'UTF-8'); ?><?php echo strlen($cita['motivo']) > 45 ? '…' : ''; ?></td>
                                         <td>
                                             <?php if ($cita['estado'] === 'pendiente'): ?>

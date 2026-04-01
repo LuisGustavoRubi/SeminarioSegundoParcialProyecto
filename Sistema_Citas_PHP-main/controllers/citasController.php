@@ -17,17 +17,19 @@ class CitasController
 
             $paciente_id = $_POST['paciente_id'] ?? '';
             $medico_id   = $_POST['medico_id']   ?? '';
+            $localidad_id= $_POST['localidad_id'] ?? '';
             $fecha       = $_POST['fecha']        ?? '';
             $hora        = $_POST['hora']         ?? '';
             $motivo      = trim($_POST['motivo']  ?? '');
             $estado      = $_POST['estado']       ?? 'pendiente';
 
             $camposFaltantes = [];
-            if (empty($paciente_id)) $camposFaltantes[] = 'Paciente';
-            if (empty($medico_id))   $camposFaltantes[] = 'Médico';
-            if (empty($fecha))       $camposFaltantes[] = 'Fecha';
-            if (empty($hora))        $camposFaltantes[] = 'Hora';
-            if ($motivo === '')      $camposFaltantes[] = 'Motivo de consulta';
+            if (empty($paciente_id))   $camposFaltantes[] = 'Paciente';
+            if (empty($medico_id))     $camposFaltantes[] = 'Médico';
+            if (empty($localidad_id))  $camposFaltantes[] = 'Localidad';
+            if (empty($fecha))         $camposFaltantes[] = 'Fecha';
+            if (empty($hora))          $camposFaltantes[] = 'Hora';
+            if ($motivo === '')        $camposFaltantes[] = 'Motivo de consulta';
 
             if (!empty($camposFaltantes)) {
                 $_SESSION['error'] = 'Los siguientes campos son obligatorios: ' . implode(', ', $camposFaltantes);
@@ -87,8 +89,8 @@ class CitasController
                 }
 
                 $sql = "INSERT INTO citas
-                    (paciente_id, medico_id, fecha, hora, motivo, estado)
-                    VALUES ($paciente_id, $medico_id, '$fecha', '$hora', '$motivo', '$estado')";
+                    (paciente_id, medico_id, localidad_id, fecha, hora, motivo, estado)
+                    VALUES ($paciente_id, $medico_id, $localidad_id, '$fecha', '$hora', '$motivo', '$estado')";
 
                 if ($this->conn->query($sql)) {
                     $_SESSION['success'] = "Cita agendada exitosamente";
@@ -152,6 +154,7 @@ class CitasController
                     $sql = "UPDATE citas SET
                     paciente_id=$paciente_id,
                     medico_id=$medico_id,
+                    localidad_id=$localidad_id,
                     fecha='$fecha',
                     hora='$hora',
                     motivo='$motivo',
@@ -279,15 +282,22 @@ class CitasController
         return $this->conn->query("SELECT * FROM enfermedades ORDER BY nombre");
     }
 
+    public function obtenerLocalidades()
+    {
+        return $this->conn->query("SELECT * FROM localidades ORDER BY nombre");
+    }
+
     public function obtenerTodas()
     {
         $sql = "SELECT c.*, 
                 CONCAT(p.nombre, ' ', p.apellido) as paciente_nombre,
                 CONCAT(m.nombre, ' ', m.apellido) as medico_nombre,
-                m.especialidad
+                m.especialidad,
+                l.nombre AS localidad
                 FROM citas c
                 INNER JOIN pacientes p ON c.paciente_id = p.id
                 INNER JOIN medicos m ON c.medico_id = m.id
+                INNER JOIN localidades l ON c.localidad_id = l.id
                 ORDER BY c.fecha DESC, c.hora DESC";
         return $this->conn->query($sql);
     }

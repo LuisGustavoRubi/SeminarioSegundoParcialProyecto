@@ -30,11 +30,17 @@ CREATE TABLE IF NOT EXISTS enfermedades (
     nombre VARCHAR(150) NOT NULL UNIQUE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS localidades (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL UNIQUE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS citas (
     id INT AUTO_INCREMENT PRIMARY KEY,
     paciente_id INT NOT NULL,
     medico_id INT NOT NULL,
     enfermedad_id INT NULL,
+    localidad_id INT NOT NULL,
     fecha DATE NOT NULL,
     hora TIME NOT NULL,
     motivo TEXT,
@@ -48,7 +54,10 @@ CREATE TABLE IF NOT EXISTS citas (
         ON DELETE CASCADE,
     CONSTRAINT fk_citas_enfermedad
         FOREIGN KEY (enfermedad_id) REFERENCES enfermedades(id)
-        ON DELETE SET NULL
+        ON DELETE SET NULL,
+    CONSTRAINT fk_citas_localidad
+        FOREIGN KEY (localidad_id) REFERENCES localidades(id)
+        ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS citas_historial (
@@ -82,7 +91,7 @@ CREATE TABLE IF NOT EXISTS citas_historial (
         FOREIGN KEY (nuevo_paciente_id) REFERENCES pacientes(id)
         ON DELETE SET NULL,
     CONSTRAINT fk_historial_nvo_medico
-        FOREIGN KEY (nuevo_medico_id)FERENCES medicos(id)
+        FOREIGN KEY (nuevo_medico_id) REFERENCES medicos(id)
         ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -139,11 +148,17 @@ INSERT IGNORE INTO pacientes (nombre, apellido, cedula, telefono, email, fecha_n
 ('José', 'Hernández', '0801-1988-22222', '+504 9876-5435', 'jose.hernandez@email.com', '1988-11-25'),
 ('Laura', 'Rodríguez', '0801-1995-33333', '+504 9876-5436', 'laura.rodriguez@email.com', '1995-07-05');
 
-INSERT IGNORE INTO citas (paciente_id, medico_id, fecha, hora, motivo, estado) VALUES
-(1, 1, CURDATE(), '09:00:00', 'Control de rutina', 'pendiente'),
-(2, 2, CURDATE(), '10:00:00', 'Vacunación infantil', 'pendiente'),
-(3, 3, CURDATE(), '11:00:00', 'Dolor en el pecho', 'completada'),
-(4, 1, DATE_ADD(CURDATE(), INTERVAL 1 DAY), '14:00:00', 'Seguimiento de tratamiento', 'pendiente'),
-(5, 4, DATE_ADD(CURDATE(), INTERVAL 2 DAY), '15:30:00', 'Consulta dermatológica', 'pendiente'),
-(1, 2, DATE_SUB(CURDATE(), INTERVAL 7 DAY), '09:00:00', 'Consulta general', 'completada'),
-(3, 1, DATE_SUB(CURDATE(), INTERVAL 3 DAY), '16:00:00', 'Control médico', 'cancelada');
+INSERT IGNORE INTO localidades (nombre) VALUES
+('Centro A'),
+('Centro B'),
+('Clínica Sur'),
+('Hospital Norte');
+
+INSERT IGNORE INTO citas (paciente_id, medico_id, fecha, hora, motivo, estado, localidad_id) VALUES
+(1, 1, CURDATE(), '09:00:00', 'Control de rutina', 'pendiente', 1),
+(2, 2, CURDATE(), '10:00:00', 'Vacunación infantil', 'pendiente', 2),
+(3, 3, CURDATE(), '11:00:00', 'Dolor en el pecho', 'completada', 3),
+(4, 1, DATE_ADD(CURDATE(), INTERVAL 1 DAY), '14:00:00', 'Seguimiento de tratamiento', 'pendiente', 4),
+(5, 4, DATE_ADD(CURDATE(), INTERVAL 2 DAY), '15:30:00', 'Consulta dermatológica', 'pendiente', 1),
+(1, 2, DATE_SUB(CURDATE(), INTERVAL 7 DAY), '09:00:00', 'Consulta general', 'completada', 2),
+(3, 1, DATE_SUB(CURDATE(), INTERVAL 3 DAY), '16:00:00', 'Control médico', 'cancelada', 3);

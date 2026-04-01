@@ -246,8 +246,8 @@ include '../includes/header.php';
                         <tbody>
                             <?php while ($m = $medicos->fetch_assoc()): ?>
                             <tr>
-                                <td><strong>Dr. <?php echo normalizar_texto($m['nombre']) . ' ' . normalizar_texto($m['apellido']); ?></strong></td>
-                                <td><span class="badge bg-info text-dark"><?php echo normalizar_texto($m['especialidad']); ?></span></td>
+                                <td><strong>Dr. <?php echo htmlspecialchars($m['nombre'] . ' ' . $m['apellido'], ENT_QUOTES, 'UTF-8'); ?></strong></td>
+                                <td><span class="badge bg-info text-dark"><?php echo htmlspecialchars($m['especialidad'], ENT_QUOTES, 'UTF-8'); ?></span></td>
                                 <td><?php echo $m['telefono'] ?: '-'; ?></td>
                                 <td><?php echo $m['email'] ?: '-'; ?></td>
                                 <td>
@@ -256,7 +256,7 @@ include '../includes/header.php';
                                             <i class="bi bi-pencil"></i>
                                         </a>
                                         <button type="button" class="btn btn-outline-danger" 
-                                                onclick="confirmarEliminacion(<?php echo $m['id']; ?>, 'Dr. <?php echo htmlspecialchars(normalizar_texto($m['nombre']) . ' ' . normalizar_texto($m['apellido']), ENT_QUOTES, 'UTF-8'); ?>', 'al médico')" 
+                                                onclick="confirmarEliminacion(<?php echo $m['id']; ?>, 'Dr. <?php echo htmlspecialchars($m['nombre'] . ' ' . $m['apellido'], ENT_QUOTES, 'UTF-8'); ?>', 'al médico')" 
                                                 title="Eliminar">
                                             <i class="bi bi-trash"></i>
                                         </button>
