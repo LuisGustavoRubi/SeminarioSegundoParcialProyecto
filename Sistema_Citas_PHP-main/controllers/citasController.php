@@ -295,6 +295,30 @@ class CitasController
             exit();
         }
 
+        // Cuando estado es completada
+        if ($_POST['action'] === 'update') {
+            $id = intval($_POST['id']);
+            $observacion = $_POST['observacion'] ?? '';
+            $enfermedad_id = intval($_POST['enfermedad_id'] ?? 0);
+
+            // Inserta o actualiza medicamentos si la cita se completa
+            if ($estado === 'completada' && $enfermedad_id > 0) {
+                $this->conn->query("DELETE FROM cita_medicamentos WHERE cita_id=$id");
+                if (!empty($_POST['medicamentos'])) {
+                    $meds = explode(',', $_POST['medicamentos']);
+                    foreach ($meds as $med_id) {
+                        $med_id = intval($med_id);
+                        $this->conn->query("INSERT INTO cita_medicamentos (cita_id, medicamento_id) VALUES ($id, $med_id)");
+                    }
+                }
+                $sqlUpdate = "UPDATE citas SET estado='$estado', enfermedad_id=$enfermedad_id WHERE id=$id";
+                $this->conn->query($sqlUpdate);
+                $_SESSION['success'] = 'Cita completada correctamente con medicamentos.';
+                header('Location: ../pages/citas.php');
+                exit();
+            }
+        }
+
         if (isset($_GET['action']) && $_GET['action'] == 'delete' && isset($_GET['id'])) {
             $id = intval($_GET['id']);
 
@@ -349,6 +373,11 @@ class CitasController
     public function obtenerLocalidades()
     {
         return $this->conn->query("SELECT * FROM localidades ORDER BY nombre");
+    }
+
+    public function obtenerMedicamentos()
+    {
+        return $this->conn->query("SELECT id, nombre FROM medicamentos ORDER BY nombre ASC");
     }
 
     public function obtenerTodas()

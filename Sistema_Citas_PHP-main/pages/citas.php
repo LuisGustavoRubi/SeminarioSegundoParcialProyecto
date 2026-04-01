@@ -339,6 +339,16 @@ include '../includes/header.php';
             <?php endwhile; ?>
         </select>
 
+        <!-- Seleccion de medicamentos -->
+        <label for="modal_medicamento_id" class="form-label fw-semibold mt-3">Medicamentos *</label>
+        <select id="modal_medicamento_id" class="form-select mb-4" multiple>
+            <?php
+            $medicamentos = $controller->obtenerMedicamentos();
+            while ($med = $medicamentos->fetch_assoc()): ?>
+                <option value="<?= $med['id'] ?>"><?= htmlspecialchars($med['nombre']) ?></option>
+            <?php endwhile; ?>
+        </select>
+
         <!-- Formulario oculto para el atajo rápido (listado) -->
         <form id="formChangeStatus" method="POST" action="citas.php" style="display:none">
             <input type="hidden" name="action" value="changeStatus">
@@ -346,6 +356,9 @@ include '../includes/header.php';
             <input type="hidden" name="id" id="modal_cita_id">
             <input type="hidden" name="enfermedad_id" id="modal_enfermedad_hidden">
         </form>
+
+        <!-- Campo oculto para enviar medicamentos seleccionados -->
+        <input type="hidden" name="medicamentos" id="modal_medicamentos_hidden">
 
         <div class="d-flex gap-2 justify-content-end">
             <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
@@ -364,6 +377,7 @@ include '../includes/header.php';
     function abrirModal(citaId, origen, selectRef = null) {
         document.getElementById('modal_cita_id').value = citaId;
         document.getElementById('modal_enfermedad_id').value = '';
+        document.getElementById('modal_medicamento_id').value = '';
         _modalOrigen   = origen;
         _selectOriginal = selectRef;
         document.getElementById('modalEnfermedad').style.display = 'flex';
@@ -379,23 +393,35 @@ include '../includes/header.php';
             const sel = document.getElementById('estado');
             if (sel) sel.value = 'pendiente';
         }
+        // quitar meds seleccionados
+        document.getElementById('modal_medicamento_id').value = '';
         document.getElementById('modalEnfermedad').style.display = 'none';
     }
 
     function confirmarEnfermedad() {
         const enfermedadId = document.getElementById('modal_enfermedad_id').value;
+        const medsSelect = document.getElementById('modal_medicamento_id');
+        const selectedMeds = Array.from(medsSelect.selectedOptions).map(opt => opt.value);
+
         if (!enfermedadId) {
             alert('Por favor seleccione una enfermedad.');
+            return;
+        }
+
+        if (selectedMeds.length === 0) {
+            alert('Por favor seleccione minimo un medicamento.');
             return;
         }
 
         if (_modalOrigen === 'listado') {
             // Enviar el formulario oculto de changeStatus
             document.getElementById('modal_enfermedad_hidden').value = enfermedadId;
+            document.getElementById('modal_medicamentos_hidden').value = selectedMeds.join(',');
             document.getElementById('formChangeStatus').submit();
         } else if (_modalOrigen === 'formulario') {
             // Llenar el campo oculto del formulario principal y dejarlo continuar
             document.getElementById('enfermedad_id_form').value = enfermedadId;
+            document.getElementById('formCita').insertAdjacentHTML('beforeend', `<input type="hidden" name="medicamentos" value="${selectedMeds.join(',')}">`);
             document.getElementById('modalEnfermedad').style.display = 'none';
             document.getElementById('formCita').submit();
         }
