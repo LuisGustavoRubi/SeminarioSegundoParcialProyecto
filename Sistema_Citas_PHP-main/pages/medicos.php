@@ -270,8 +270,8 @@ include '../includes/header.php';
                                         <a href="?action=edit&id=<?php echo $m['id']; ?>" class="btn btn-outline-primary" title="Editar">
                                             <i class="bi bi-pencil"></i>
                                         </a>
-                                        <button type="button" class="btn btn-outline-danger"
-                                                onclick="confirmarEliminacion(<?php echo $m['id']; ?>, 'Dr. <?php echo htmlspecialchars(normalizar_texto($m['nombre']) . ' ' . normalizar_texto($m['apellido']), ENT_QUOTES, 'UTF-8'); ?>', 'al médico')"
+                                        <button type="button" class="btn btn-outline-danger" 
+                                                onclick="confirmarEliminacion(<?php echo $m['id']; ?>, 'Dr. <?php echo htmlspecialchars($m['nombre'] . ' ' . $m['apellido'], ENT_QUOTES, 'UTF-8'); ?>', 'al médico')" 
                                                 title="Eliminar">
                                             <i class="bi bi-trash"></i>
                                         </button>
