@@ -13,6 +13,7 @@
     <style>
         :root {
             --primary-color: #0d6efd;
+            --login-active-primary: #dc3545;
             --sidebar-bg: #f8f9fa;
         }
 
@@ -65,6 +66,24 @@
             background-color: var(--bs-primary) !important;
             color: white;
         }
+
+        /* Estilo de boton de cerrar sesion */
+        .btn-logout {
+            background: var(--login-active-primary);
+            border: 1px solid var(--login-active-primary);
+            color: #fff;
+            font-size: 15px;
+            padding: 10px 20px;
+            box-shadow: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-logout:hover,
+        .btn-logout:focus {
+            background: transparent;
+            color: var(--login-active-primary);
+            border-color: var(--login-active-primary);
+        }
     </style>
 </head>
 
@@ -112,7 +131,7 @@
                         <li class="nav-item">
                             <a class="nav-link <?php echo isset($current_page) && $current_page == 'citasHistorial' ? 'active' : ''; ?> rounded"
                                 href="<?php echo basename($_SERVER['PHP_SELF']) == 'cistasHistorial.php' ? '#' : (basename($_SERVER['PHP_SELF']) == 'index.php' ? 'pages/citasHistorial.php' : 'citasHistorial.php'); ?>">
-                                <i class="bi bi-journal-text"></i> <!-- puede tambien ser bi-clock-history para el icon-->
+                                <i class="bi bi-journal-text"></i>
                                 Historial Citas
                             </a>
                         </li>
@@ -124,10 +143,7 @@
                                 Usuarios
                             </a>
                         </li>
-                        <?php endif; ?>
                     </ul>
-
-                    <hr>
 
                     <div class="px-3 text-muted small">
                         <p class="mb-1">Sistema de Gestión</p>
