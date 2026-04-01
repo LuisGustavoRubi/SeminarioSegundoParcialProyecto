@@ -23,6 +23,18 @@ class CitasController
 
     public function handleRequest()
     {
+        // medicamento por localidad
+        if (isset($_GET['action']) && $_GET['action'] === 'getMedicamentos' && isset($_GET['localidad_id'])) {
+            $meds = $this->obtenerMedicamentosPorLocalidad($_GET['localidad_id']);
+            $result = [];
+            while ($row = $meds->fetch_assoc()) {
+                $result[] = $row;
+            }
+            header('Content-Type: application/json');
+            echo json_encode($result);
+            exit();
+        }
+
         if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] !== 'changeStatus') {
 
             $paciente_id = $_POST['paciente_id'] ?? '';
@@ -296,7 +308,7 @@ class CitasController
         }
 
         // Cuando estado es completada
-        if ($_POST['action'] === 'update') {
+        if (isset($_POST['action']) && $_POST['action'] === 'update') {
             $id = intval($_POST['id']);
             $observacion = $_POST['observacion'] ?? '';
             $enfermedad_id = intval($_POST['enfermedad_id'] ?? 0);
@@ -374,7 +386,14 @@ class CitasController
     {
         return $this->conn->query("SELECT * FROM localidades ORDER BY nombre");
     }
-
+    public function obtenerMedicamentosPorLocalidad($localidad_id)
+    {
+        $localidad_id = intval($localidad_id);
+        return $this->conn->query("SELECT m.id, m.nombre, lm.stock FROM medicamentos m
+            INNER JOIN localidad_medicamentos lm ON lm.medicamento_id = m.id
+            WHERE lm.localidad_id = $localidad_id AND lm.stock > 0
+            ORDER BY m.nombre ASC");
+    }
     public function obtenerMedicamentos()
     {
         return $this->conn->query("SELECT id, nombre FROM medicamentos ORDER BY nombre ASC");

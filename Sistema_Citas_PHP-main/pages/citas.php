@@ -263,7 +263,7 @@ include '../includes/header.php';
                         </thead>
                         <tbody>
                             <?php while ($c = $citas->fetch_assoc()): ?>
-                                <tr>
+                                <tr data-localidad-id="<?php echo $c['localidad_id']; ?>">
                                     <td><strong><?php echo date('d/m/Y', strtotime($c['fecha'])); ?></strong></td>
                                     <td><?php echo date('H:i', strtotime($c['hora'])); ?></td>
                                     <td><?php echo htmlspecialchars($c['paciente_nombre'], ENT_QUOTES, 'UTF-8'); ?></td>
@@ -342,12 +342,9 @@ include '../includes/header.php';
         <!-- Seleccion de medicamentos -->
         <label for="modal_medicamento_id" class="form-label fw-semibold mt-3">Medicamentos *</label>
         <select id="modal_medicamento_id" class="form-select mb-4" multiple>
-            <?php
-            $medicamentos = $controller->obtenerMedicamentos();
-            while ($med = $medicamentos->fetch_assoc()): ?>
-                <option value="<?= $med['id'] ?>"><?= htmlspecialchars($med['nombre']) ?></option>
-            <?php endwhile; ?>
+            <option disabled>Seleccione primero una localidad</option>
         </select>
+        <small class="text-muted">Se muestran medicamentos de localidad de la cita.</small>
 
         <!-- Formulario oculto para el atajo rápido (listado) -->
         <form id="formChangeStatus" method="POST" action="citas.php" style="display:none">
@@ -377,10 +374,46 @@ include '../includes/header.php';
     function abrirModal(citaId, origen, selectRef = null) {
         document.getElementById('modal_cita_id').value = citaId;
         document.getElementById('modal_enfermedad_id').value = '';
-        document.getElementById('modal_medicamento_id').value = '';
-        _modalOrigen   = origen;
+        document.getElementById('modal_medicamento_id').innerHTML = '<option disabled>Cargando...</option>';
+        _modalOrigen    = origen;
         _selectOriginal = selectRef;
+
+        let localidadId = 0;
+        if (origen === 'formulario') {
+            localidadId = document.getElementById('localidad_id')?.value;
+        } else if (origen === 'listado') {
+            const row = selectRef?.closest('tr');
+            localidadId = row?.dataset.localidadId ?? 0;
+        }
+
+        if (localidadId > 0) {
+            cargarMedicamentosPorLocalidad(localidadId);
+        } else {
+            document.getElementById('modal_medicamento_id').innerHTML =
+                '<option disabled>No se pudo determinar la localidad</option>';
+        }
+
         document.getElementById('modalEnfermedad').style.display = 'flex';
+    }
+
+    // Medicamentos por locacion
+    function cargarMedicamentosPorLocalidad(localidadId) {
+        fetch(`citas.php?action=getMedicamentos&localidad_id=${localidadId}`)
+            .then(r => r.json())
+            .then(meds => {
+                const select = document.getElementById('modal_medicamento_id');
+                if (meds.length === 0) {
+                    select.innerHTML = '<option disabled>Sin medicamentos disponibles en localidad</option>';
+                } else {
+                    select.innerHTML = meds.map(m =>
+                        `<option value="${m.id}">${m.nombre} (Stock: ${m.stock})</option>`
+                    ).join('');
+                }
+            })
+            .catch(() => {
+                document.getElementById('modal_medicamento_id').innerHTML =
+                    '<option disabled>Error al cargar medicamentos</option>';
+            });
     }
 
     function cerrarModal() {
