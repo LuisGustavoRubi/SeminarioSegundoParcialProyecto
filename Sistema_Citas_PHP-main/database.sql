@@ -35,6 +35,22 @@ CREATE TABLE IF NOT EXISTS localidades (
     nombre VARCHAR(100) NOT NULL UNIQUE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS medicamentos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(150) NOT NULL,
+    precio DECIMAL(10,2) NOT NULL DEFAULT 0.00
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS localidad_medicamentos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    localidad_id INT NOT NULL,
+    medicamento_id INT NOT NULL,
+    stock INT DEFAULT 0,
+
+    FOREIGN KEY (localidad_id) REFERENCES localidades(id) ON DELETE CASCADE,
+    FOREIGN KEY (medicamento_id) REFERENCES medicamentos(id) ON DELETE CASCADE
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS citas (
     id INT AUTO_INCREMENT PRIMARY KEY,
     paciente_id INT NOT NULL,
@@ -153,6 +169,50 @@ INSERT IGNORE INTO localidades (nombre) VALUES
 ('Centro B'),
 ('Clínica Sur'),
 ('Hospital Norte');
+
+INSERT IGNORE INTO medicamentos (nombre, precio) VALUES
+('Paracetamol 500mg', 5.00),
+('Ibuprofeno 400mg', 6.50),
+('Amoxicilina 500mg', 12.00),
+('Azitromicina 500mg', 18.00),
+('Omeprazol 20mg', 7.00),
+('Loratadina 10mg', 4.50),
+('Salbutamol Inhalador', 25.00),
+('Metformina 850mg', 9.00),
+('Losartán 50mg', 11.00),
+('Ácido Fólico', 3.50),
+('Vitamina C 500mg', 4.00),
+('Diclofenaco 50mg', 6.00);
+
+INSERT INTO localidad_medicamentos (localidad_id, medicamento_id, stock) VALUES
+-- Centro A
+(1, 1, 50),
+(1, 2, 40),
+(1, 3, 30),
+(1, 5, 25),
+(1, 6, 60),
+
+-- Centro b
+(2, 1, 30),
+(2, 4, 20),
+(2, 7, 15),
+(2, 8, 25),
+(2, 9, 20),
+
+-- Clinica sur
+(3, 2, 35),
+(3, 3, 20),
+(3, 6, 40),
+(3, 10, 50),
+(3, 11, 45),
+
+-- Hospital norte
+(4, 1, 60),
+(4, 3, 40),
+(4, 4, 35),
+(4, 7, 25),
+(4, 12, 30);
+
 
 INSERT IGNORE INTO citas (paciente_id, medico_id, fecha, hora, motivo, estado, localidad_id) VALUES
 (1, 1, CURDATE(), '09:00:00', 'Control de rutina', 'pendiente', 1),

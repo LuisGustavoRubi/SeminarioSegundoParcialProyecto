@@ -2,14 +2,17 @@
 session_start();
 require_once '../includes/config.php';
 
-class LoginController {
+class LoginController
+{
     private $conn;
 
-    public function __construct($conn) {
+    public function __construct($conn)
+    {
         $this->conn = $conn;
     }
 
-    public function login() {
+    public function login()
+    {
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -55,6 +58,13 @@ class LoginController {
                 header("Location: ../pages/login.php");
                 exit();
             }
+
+            //Esto es solo para probar
+            // if ($password !== $user['contrasena']) {
+            //     $_SESSION['error'] = "Credenciales incorrectas";
+            //     header("Location: ../pages/login.php");
+            //     exit();
+            // }
 
             // Guardar datos de usuario logeado
             $_SESSION['usuario']   = $user['usuario'];

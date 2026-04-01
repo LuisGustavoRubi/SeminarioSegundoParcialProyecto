@@ -143,6 +143,7 @@
                                 Usuarios
                             </a>
                         </li>
+                        <?php endif; ?>
                     </ul>
 
                     <div class="px-3 text-muted small">
@@ -182,3 +183,10 @@
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2"><?php echo isset($page_title) ? $page_title : 'Dashboard'; ?></h1>
                 </div>
+            </main>
+        </div>
+    </div>
+
+</body>
+
+</html>
