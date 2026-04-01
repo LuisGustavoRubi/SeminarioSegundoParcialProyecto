@@ -2,6 +2,18 @@
 require_once '../includes/config.php';
 require_once '../controllers/MedicosController.php';
 
+$esJefe = ($_SESSION['rol'] ?? '') === 'jefe';
+
+// Empleados no pueden crear, editar ni eliminar médicos
+if (!$esJefe && (
+    $_SERVER['REQUEST_METHOD'] === 'POST' ||
+    (isset($_GET['action']) && in_array($_GET['action'], ['new', 'edit', 'delete']))
+)) {
+    $_SESSION['error'] = 'No tiene permiso para realizar esta acción.';
+    header('Location: medicos.php');
+    exit();
+}
+
 $controller = new MedicoController($conn);
 $controller->handleRequest();
 
@@ -220,11 +232,13 @@ include '../includes/header.php';
     </script>
 
 <?php else: ?>
+    <?php if ($esJefe): ?>
     <div class="mb-3">
         <a href="?action=new" class="btn btn-primary">
             <i class="bi bi-person-plus"></i> Nuevo Médico
         </a>
     </div>
+    <?php endif; ?>
 
     <div class="card">
         <div class="card-header">
@@ -246,22 +260,26 @@ include '../includes/header.php';
                         <tbody>
                             <?php while ($m = $medicos->fetch_assoc()): ?>
                             <tr>
-                                <td><strong>Dr. <?php echo normalizar_texto($m['nombre']) . ' ' . normalizar_texto($m['apellido']); ?></strong></td>
-                                <td><span class="badge bg-info text-dark"><?php echo normalizar_texto($m['especialidad']); ?></span></td>
+                                <td><strong>Dr. <?php echo htmlspecialchars($m['nombre'] . ' ' . $m['apellido'], ENT_QUOTES, 'UTF-8'); ?></strong></td>
+                                <td><span class="badge bg-info text-dark"><?php echo htmlspecialchars($m['especialidad'], ENT_QUOTES, 'UTF-8'); ?></span></td>
                                 <td><?php echo $m['telefono'] ?: '-'; ?></td>
                                 <td><?php echo $m['email'] ?: '-'; ?></td>
+                                <?php if ($esJefe): ?>
                                 <td>
                                     <div class="btn-group btn-group-sm" role="group">
                                         <a href="?action=edit&id=<?php echo $m['id']; ?>" class="btn btn-outline-primary" title="Editar">
                                             <i class="bi bi-pencil"></i>
                                         </a>
-                                        <button type="button" class="btn btn-outline-danger" 
-                                                onclick="confirmarEliminacion(<?php echo $m['id']; ?>, 'Dr. <?php echo htmlspecialchars(normalizar_texto($m['nombre']) . ' ' . normalizar_texto($m['apellido']), ENT_QUOTES, 'UTF-8'); ?>', 'al médico')" 
+                                        <button type="button" class="btn btn-outline-danger"
+                                                onclick="confirmarEliminacion(<?php echo $m['id']; ?>, 'Dr. <?php echo htmlspecialchars(normalizar_texto($m['nombre']) . ' ' . normalizar_texto($m['apellido']), ENT_QUOTES, 'UTF-8'); ?>', 'al médico')"
                                                 title="Eliminar">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </div>
                                 </td>
+                                <?php else: ?>
+                                <td><span class="text-muted small">Solo lectura</span></td>
+                                <?php endif; ?>
                             </tr>
                             <?php endwhile; ?>
                         </tbody>

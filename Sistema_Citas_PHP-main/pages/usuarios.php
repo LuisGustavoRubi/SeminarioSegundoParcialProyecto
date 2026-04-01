@@ -1,4 +1,12 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) session_start();
+
+if (($_SESSION['rol'] ?? '') !== 'jefe') {
+    $_SESSION['error'] = 'No tiene permiso para acceder a la gestión de usuarios.';
+    header('Location: ../index.php');
+    exit();
+}
+
 require_once '../includes/config.php';
 require_once '../controllers/usuariosController.php';
 
@@ -67,7 +75,17 @@ include '../includes/header.php';
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Médico a Asignar (Opcional)</label>
+                            <label for="rol_id" class="form-label">Rol *</label>
+                            <?php $rolActual = $form_data['rol_id'] ?? ($usuario['rol_id'] ?? 2); ?>
+                            <select class="form-select" id="rol_id" name="rol_id" required>
+                                <option value="2" <?php echo $rolActual == 2 ? 'selected' : ''; ?>>Empleado (Médico)</option>
+                                <option value="1" <?php echo $rolActual == 1 ? 'selected' : ''; ?>>Jefe (Administrador)</option>
+                            </select>
+                            <div class="form-text">Empleado: solo ve sus propias citas · Jefe: acceso completo</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Médico a Asignar (Requerido para empleados)</label>
                             <?php $medicoActual = $form_data['medico_id'] ?? ($usuario['medico_id'] ?? ''); ?>
                             <input type="hidden" id="medico_id" name="medico_id"
                                    value="<?php echo htmlspecialchars($medicoActual, ENT_QUOTES, 'UTF-8'); ?>">
@@ -111,10 +129,7 @@ include '../includes/header.php';
                                     <?php endforeach; ?>
                                 </ul>
                             </div>
-                            <div class="form-text">
-                                Si selecciona un médico → Rol: <strong>Jefe/Administrador</strong><br>
-                                Si no selecciona → Rol: <strong>Empleado</strong>
-                            </div>
+                            <div class="form-text">Selecciona el médico que corresponde a este usuario empleado</div>
                         </div>
 
                         <div class="alert alert-info" role="alert">

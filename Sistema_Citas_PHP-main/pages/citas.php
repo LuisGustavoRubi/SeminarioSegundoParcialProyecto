@@ -10,7 +10,13 @@ $mostrar_formulario = false;
 
 if (isset($_GET['action']) && $_GET['action'] == 'edit' && isset($_GET['id'])) {
     $cita = $controller->obtenerPorId($_GET['id']);
-    $mostrar_formulario = true;
+    if ($cita) {
+        $mostrar_formulario = true;
+    } else {
+        $_SESSION['error'] = 'Cita no encontrada o no tiene permiso para acceder a ella.';
+        header('Location: citas.php');
+        exit();
+    }
 }
 
 if (isset($_GET['action']) && $_GET['action'] == 'new') {
@@ -18,8 +24,9 @@ if (isset($_GET['action']) && $_GET['action'] == 'new') {
 }
 
 if ($mostrar_formulario) {
-    $pacientes   = $controller->obtenerPacientes();
-    $medicos     = $controller->obtenerMedicos();
+    $pacientes    = $controller->obtenerPacientes();
+    $medicos      = $controller->obtenerMedicos();
+    $localidades  = $controller->obtenerLocalidades();
     $enfermedades = $controller->obtenerEnfermedades();
 } else {
     $citas        = $controller->obtenerTodas();
@@ -56,7 +63,7 @@ include '../includes/header.php';
                         <?php endif; ?>
 
                         <div class="row mb-3">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label for="paciente_id" class="form-label">Paciente *</label>
                                 <select class="form-select" id="paciente_id" name="paciente_id"
                                     <?php echo $citaBloqueada ? 'disabled' : 'required'; ?>>
@@ -66,22 +73,43 @@ include '../includes/header.php';
                                     while ($p = $pacientes->fetch_assoc()): ?>
                                         <option value="<?php echo $p['id']; ?>"
                                             <?php echo ($selectedPaciente == $p['id']) ? 'selected' : ''; ?>>
-                                            <?php echo normalizar_texto($p['nombre']) . ' ' . normalizar_texto($p['apellido']) . ' - ' . $p['cedula']; ?>
+                                            <?php echo htmlspecialchars($p['nombre'] . ' ' . $p['apellido'] . ' - ' . $p['cedula'], ENT_QUOTES, 'UTF-8'); ?>
                                         </option>
                                     <?php endwhile; ?>
                                 </select>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label for="medico_id" class="form-label">Médico *</label>
-                                <select class="form-select" id="medico_id" name="medico_id"
-                                    <?php echo $citaBloqueada ? 'disabled' : 'required'; ?>>
+                                <?php
+                                $esEmpleado = ($_SESSION['rol'] ?? '') === 'empleado';
+                                $selectedMedico = $form_data['medico_id'] ?? ($cita['medico_id'] ?? ($esEmpleado ? intval($_SESSION['medico_id'] ?? 0) : ''));
+                                ?>
+                                <?php if ($esEmpleado): ?>
+                                    <input type="hidden" name="medico_id" value="<?php echo intval($_SESSION['medico_id'] ?? 0); ?>">
+                                <?php endif; ?>
+                                <select class="form-select" id="medico_id"
+                                    <?php if (!$esEmpleado && !$citaBloqueada): ?>name="medico_id" required<?php endif; ?>
+                                    <?php echo ($esEmpleado || $citaBloqueada) ? 'disabled' : ''; ?>>
                                     <option value="">Seleccionar médico...</option>
-                                    <?php
-                                    $selectedMedico = $form_data['medico_id'] ?? ($cita['medico_id'] ?? '');
-                                    while ($m = $medicos->fetch_assoc()): ?>
+                                    <?php while ($m = $medicos->fetch_assoc()): ?>
                                         <option value="<?php echo $m['id']; ?>"
                                             <?php echo ($selectedMedico == $m['id']) ? 'selected' : ''; ?>>
-                                            Dr. <?php echo normalizar_texto($m['nombre']) . ' ' . normalizar_texto($m['apellido']) . ' - ' . normalizar_texto($m['especialidad']); ?>
+                                            Dr. <?php echo htmlspecialchars($m['nombre'] . ' ' . $m['apellido'] . ' - ' . $m['especialidad'], ENT_QUOTES, 'UTF-8'); ?>
+                                        </option>
+                                    <?php endwhile; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="localidad_id" class="form-label">Localidad *</label>
+                                <select class="form-select" id="localidad_id" name="localidad_id"
+                                    <?php echo $citaBloqueada ? 'disabled' : 'required'; ?>>
+                                    <option value="">Seleccionar localidad...</option>
+                                    <?php
+                                    $selectedLocalidad = $form_data['localidad_id'] ?? ($cita['localidad_id'] ?? '');
+                                    while ($loc = $localidades->fetch_assoc()): ?>
+                                        <option value="<?php echo $loc['id']; ?>"
+                                            <?php echo ($selectedLocalidad == $loc['id']) ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($loc['nombre'], ENT_QUOTES, 'UTF-8'); ?>
                                         </option>
                                     <?php endwhile; ?>
                                 </select>
@@ -227,6 +255,7 @@ include '../includes/header.php';
                                 <th>Paciente</th>
                                 <th>Médico</th>
                                 <th>Especialidad</th>
+                                <th>Localidad</th>
                                 <th>Motivo</th>
                                 <th>Estado</th>
                                 <th>Acciones</th>
@@ -237,10 +266,11 @@ include '../includes/header.php';
                                 <tr>
                                     <td><strong><?php echo date('d/m/Y', strtotime($c['fecha'])); ?></strong></td>
                                     <td><?php echo date('H:i', strtotime($c['hora'])); ?></td>
-                                    <td><?php echo normalizar_texto($c['paciente_nombre']); ?></td>
-                                    <td>Dr. <?php echo normalizar_texto($c['medico_nombre']); ?></td>
-                                    <td><span class="badge bg-info text-dark"><?php echo normalizar_texto($c['especialidad']); ?></span></td>
-                                    <td><?php echo substr($c['motivo'], 0, 40); ?><?php echo strlen($c['motivo']) > 40 ? '...' : ''; ?></td>
+                                    <td><?php echo htmlspecialchars($c['paciente_nombre'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td>Dr. <?php echo htmlspecialchars($c['medico_nombre'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><span class="badge bg-info text-dark"><?php echo htmlspecialchars($c['especialidad'], ENT_QUOTES, 'UTF-8'); ?></span></td>
+                                    <td><?php echo htmlspecialchars($c['localidad'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars(substr($c['motivo'], 0, 40), ENT_QUOTES, 'UTF-8'); ?><?php echo strlen($c['motivo']) > 40 ? '...' : ''; ?></td>
                                     <td>
                                         <?php if (in_array($c['estado'], ['cancelada', 'completada'])): ?>
                                             <?php

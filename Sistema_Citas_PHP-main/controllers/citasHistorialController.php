@@ -9,10 +9,16 @@ class CitasHistorialController
     {
         $this->conn = $conexion;
     }
-    // todo el hitorial
+    // todo el historial
     public function obtenerHistorial()
     {
-        $sql = "SELECT 
+        $rol      = $_SESSION['rol']      ?? '';
+        $medicoId = intval($_SESSION['medico_id'] ?? 0);
+        $where    = ($rol === 'empleado' && $medicoId > 0)
+            ? "WHERE (h.anterior_medico_id = $medicoId OR h.nuevo_medico_id = $medicoId)"
+            : '';
+
+        $sql = "SELECT
         h.id,
         h.tipo_cambio,
         h.observacion,
@@ -40,17 +46,19 @@ class CitasHistorialController
 
         FROM citas_historial h
 
-        LEFT JOIN pacientes p1 
+        LEFT JOIN pacientes p1
         ON h.anterior_paciente_id = p1.id
 
-        LEFT JOIN pacientes p2 
+        LEFT JOIN pacientes p2
         ON h.nuevo_paciente_id = p2.id
 
-        LEFT JOIN medicos m1 
+        LEFT JOIN medicos m1
         ON h.anterior_medico_id = m1.id
 
-        LEFT JOIN medicos m2 
+        LEFT JOIN medicos m2
         ON h.nuevo_medico_id = m2.id
+
+        $where
 
         ORDER BY h.fecha_cambio DESC";
 
@@ -130,56 +138,65 @@ class CitasHistorialController
         return $this->conn->query("SELECT * FROM pacientes ORDER BY apellido, nombre");
     }
     public function buscarPorNombre($nombre)
-{
-    $busqueda = $this->conn->prepare("
-    SELECT 
-    h.id,
-    h.tipo_cambio,
-    h.observacion,
-    h.fecha_cambio,
+    {
+        $rol      = $_SESSION['rol']      ?? '';
+        $medicoId = intval($_SESSION['medico_id'] ?? 0);
+        $esMedico = ($rol === 'empleado' && $medicoId > 0);
 
-    p1.nombre AS paciente_anterior_nombre,
-    p1.apellido AS paciente_anterior_apellido,
+        $andMedico = $esMedico
+            ? "AND (h.anterior_medico_id = $medicoId OR h.nuevo_medico_id = $medicoId)"
+            : '';
 
-    p2.nombre AS paciente_nuevo_nombre,
-    p2.apellido AS paciente_nuevo_apellido,
+        $busqueda = $this->conn->prepare("
+        SELECT
+        h.id,
+        h.tipo_cambio,
+        h.observacion,
+        h.fecha_cambio,
 
-    m1.nombre AS medico_anterior_nombre,
-    m1.apellido AS medico_anterior_apellido,
+        p1.nombre AS paciente_anterior_nombre,
+        p1.apellido AS paciente_anterior_apellido,
 
-    m2.nombre AS medico_nuevo_nombre,
-    m2.apellido AS medico_nuevo_apellido,
+        p2.nombre AS paciente_nuevo_nombre,
+        p2.apellido AS paciente_nuevo_apellido,
 
-    h.anterior_fecha,
-    h.anterior_hora,
-    h.nuevo_fecha,
-    h.nuevo_hora,
+        m1.nombre AS medico_anterior_nombre,
+        m1.apellido AS medico_anterior_apellido,
 
-    h.anterior_estado,
-    h.nuevo_estado
+        m2.nombre AS medico_nuevo_nombre,
+        m2.apellido AS medico_nuevo_apellido,
 
-    FROM citas_historial h
+        h.anterior_fecha,
+        h.anterior_hora,
+        h.nuevo_fecha,
+        h.nuevo_hora,
 
-    LEFT JOIN pacientes p1 ON h.anterior_paciente_id = p1.id
-    LEFT JOIN pacientes p2 ON h.nuevo_paciente_id = p2.id
-    LEFT JOIN medicos m1 ON h.anterior_medico_id = m1.id
-    LEFT JOIN medicos m2 ON h.nuevo_medico_id = m2.id
+        h.anterior_estado,
+        h.nuevo_estado
 
-    WHERE p2.nombre LIKE ? 
-    OR p2.apellido LIKE ?
-    OR CONCAT(p2.nombre, ' ', p2.apellido) LIKE ?
+        FROM citas_historial h
 
-    ORDER BY h.fecha_cambio DESC
-    ");
+        LEFT JOIN pacientes p1 ON h.anterior_paciente_id = p1.id
+        LEFT JOIN pacientes p2 ON h.nuevo_paciente_id = p2.id
+        LEFT JOIN medicos m1 ON h.anterior_medico_id = m1.id
+        LEFT JOIN medicos m2 ON h.nuevo_medico_id = m2.id
 
-    $termino = "%$nombre%";
-    if ($busqueda === false) {
-        return [];
+        WHERE (p2.nombre LIKE ?
+        OR p2.apellido LIKE ?
+        OR CONCAT(p2.nombre, ' ', p2.apellido) LIKE ?)
+        $andMedico
+
+        ORDER BY h.fecha_cambio DESC
+        ");
+
+        if ($busqueda === false) {
+            return [];
+        }
+
+        $termino = "%$nombre%";
+        $busqueda->bind_param("sss", $termino, $termino, $termino);
+        $busqueda->execute();
+
+        return $busqueda->get_result()->fetch_all(MYSQLI_ASSOC);
     }
-
-    $busqueda->bind_param("sss", $termino, $termino, $termino);
-    $busqueda->execute();
-
-    return $busqueda->get_result()->fetch_all(MYSQLI_ASSOC);
-}
 }

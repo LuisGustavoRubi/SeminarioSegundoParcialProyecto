@@ -1,12 +1,13 @@
 <?php
 require_once 'includes/config.php';
 
-//ESTO ES TEMPORAL, SOLO ES PARA VER SI FUNCIONA QUE SE GUARDEN CREDENCIALES EN SESION
 session_start();
-$user= $_SESSION['usuario'];
-$rol = $_SESSION['rol'];
-$id = $_SESSION['user_id'];
-//
+
+if (!isset($_SESSION['usuario'])) {
+    header('Location: pages/login.php');
+    exit;
+}
+
 
 $total_pacientes = $conn->query("SELECT COUNT(*) as total FROM pacientes")->fetch_assoc()['total'];
 $total_medicos   = $conn->query("SELECT COUNT(*) as total FROM medicos")->fetch_assoc()['total'];
@@ -60,10 +61,12 @@ $order_sql = $order_map[$orden] ?? 'c.fecha ASC, c.hora ASC';
 $sql_citas = "SELECT c.*,
               CONCAT(p.nombre, ' ', p.apellido) AS paciente_nombre,
               CONCAT(m.nombre, ' ', m.apellido) AS medico_nombre,
-              m.especialidad
+              m.especialidad,
+              l.nombre AS localidad
               FROM citas c
               INNER JOIN pacientes p ON c.paciente_id = p.id
               INNER JOIN medicos m   ON c.medico_id   = m.id
+              INNER JOIN localidades l ON c.localidad_id = l.id
               $where_sql
               ORDER BY $order_sql";
 $citas_result = $conn->query($sql_citas);
@@ -77,6 +80,8 @@ if ($fecha_filtro === $hoy && $estado_filtro === '' && $buscar === '') {
     $card_titulo = '<i class="bi bi-calendar-check"></i> Todas las Citas';
 }
 
+$esJefe = ($_SESSION['rol'] ?? '') === 'jefe';
+
 $page_title = "Dashboard";
 include 'includes/header.php';
 ?>
@@ -87,11 +92,6 @@ include 'includes/header.php';
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <!-- ES TEMPORAL -->
-                        <p><?php echo $user; ?></p>
-                        <p><?php echo $rol; ?></p>
-                        <p><?php echo $id; ?></p>
-                        <!--  -->
                         <h6 class="text-muted mb-2">Total Pacientes</h6>
                         <h2 class="mb-0"><?php echo $total_pacientes; ?></h2>
                     </div>
@@ -156,12 +156,14 @@ include 'includes/header.php';
                             Nuevo Paciente
                         </a>
                     </div>
+                    <?php if ($esJefe): ?>
                     <div class="col-md-4 mb-1">
                         <a href="pages/medicos.php?action=new" class="btn btn-outline-info btn-lg w-100">
                             <i class="bi bi-person-badge"></i><br>
                             Nuevo Médico
                         </a>
                     </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -234,6 +236,7 @@ include 'includes/header.php';
                                     <th>Paciente</th>
                                     <th>Médico</th>
                                     <th>Especialidad</th>
+                                    <th>Localidad</th>
                                     <th>Motivo</th>
                                     <th>Estado</th>
                                 </tr>
@@ -243,9 +246,10 @@ include 'includes/header.php';
                                     <tr>
                                         <td><?php echo date('d/m/Y', strtotime($cita['fecha'])); ?></td>
                                         <td><strong><?php echo date('H:i', strtotime($cita['hora'])); ?></strong></td>
-                                        <td><?php echo normalizar_texto($cita['paciente_nombre']); ?></td>
-                                        <td>Dr. <?php echo normalizar_texto($cita['medico_nombre']); ?></td>
-                                        <td><span class="badge bg-info text-dark"><?php echo normalizar_texto($cita['especialidad']); ?></span></td>
+                                        <td><?php echo htmlspecialchars($cita['paciente_nombre'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                        <td>Dr. <?php echo htmlspecialchars($cita['medico_nombre'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                        <td><span class="badge bg-info text-dark"><?php echo htmlspecialchars($cita['especialidad'], ENT_QUOTES, 'UTF-8'); ?></span></td>
+                                        <td><?php echo htmlspecialchars($cita['localidad'], ENT_QUOTES, 'UTF-8'); ?></td>
                                         <td><?php echo htmlspecialchars(substr($cita['motivo'], 0, 45), ENT_QUOTES, 'UTF-8'); ?><?php echo strlen($cita['motivo']) > 45 ? '…' : ''; ?></td>
                                         <td>
                                             <?php if ($cita['estado'] === 'pendiente'): ?>

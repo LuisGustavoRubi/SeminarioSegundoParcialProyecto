@@ -18,7 +18,7 @@ class LoginController {
 
             // Si usuario existe
             $stmt = $this->conn->prepare("
-                SELECT u.id, u.usuario, u.contrasena, u.estado, r.nombre AS rol FROM usuarios u 
+                SELECT u.id, u.usuario, u.contrasena, u.estado, u.medico_id, r.nombre AS rol FROM usuarios u
                 INNER JOIN roles r ON u.rol_id = r.id
                 WHERE u.usuario = ?
             ");
@@ -35,24 +35,32 @@ class LoginController {
 
             $user = $result->fetch_assoc();
 
-            // Usuario inactivo
+            // Usuario inactivo: validar contraseña default antes de permitir activación
             if ($user['estado'] !== 'activo') {
-                $_SESSION['error'] = "La cuenta esta inactiva";
-                header("Location: ../pages/login.php");
+                if ($password !== $user['contrasena']) {
+                    $_SESSION['error'] = "Credenciales incorrectas";
+                    header("Location: ../pages/login.php");
+                    exit();
+                }
+                // Credenciales default correctas → iniciar flujo de activación
+                $_SESSION['activacion_id']      = $user['id'];
+                $_SESSION['activacion_usuario'] = $user['usuario'];
+                header("Location: ../pages/activarCuenta.php");
                 exit();
             }
 
-            // Contra incorrecta
-            if ($password !== $user['contrasena']) {
+            // Cuenta activa: validar con hash BCrypt
+            if (!password_verify($password, $user['contrasena'])) {
                 $_SESSION['error'] = "Credenciales incorrectas";
                 header("Location: ../pages/login.php");
                 exit();
             }
 
             // Guardar datos de usuario logeado
-            $_SESSION['usuario'] = $user['usuario'];
-            $_SESSION['rol'] = $user['rol'];
-            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['usuario']   = $user['usuario'];
+            $_SESSION['rol']       = $user['rol'];
+            $_SESSION['user_id']   = $user['id'];
+            $_SESSION['medico_id'] = $user['medico_id']; // null si es jefe
 
             header("Location: ../index.php");
             exit();

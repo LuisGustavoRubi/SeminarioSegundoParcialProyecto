@@ -1,4 +1,5 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) session_start();
 require_once '../includes/config.php';
 require_once '../controllers/citasHistorialController.php';
 
@@ -85,10 +86,10 @@ include '../includes/header.php';
                                     <?php endif; ?>
                                 </td>
                                 <td>
-                                    <?= normalizar_texto($h['paciente_nuevo_nombre']) . " " . normalizar_texto($h['paciente_nuevo_apellido']) ?>
+                                    <?= htmlspecialchars($h['paciente_nuevo_nombre'] . ' ' . $h['paciente_nuevo_apellido'], ENT_QUOTES, 'UTF-8') ?>
                                 </td>
                                 <td>
-                                    <?= normalizar_texto($h['medico_nuevo_nombre']) . " " . normalizar_texto($h['medico_nuevo_apellido']) ?>
+                                    <?= htmlspecialchars($h['medico_nuevo_nombre'] . ' ' . $h['medico_nuevo_apellido'], ENT_QUOTES, 'UTF-8') ?>
                                 </td>
                                 <td>
                                     <?= $h['nuevo_fecha'] ? date("d/m/Y", strtotime($h['nuevo_fecha'])) : '-' ?>

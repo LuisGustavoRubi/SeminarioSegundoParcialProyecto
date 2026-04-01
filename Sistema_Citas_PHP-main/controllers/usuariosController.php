@@ -38,6 +38,7 @@ class UsuarioController {
             $_SESSION['form_data'] = $_POST;
 
             $usuario   = trim($_POST['usuario']   ?? '');
+            $rol_id    = intval($_POST['rol_id']   ?? 2);
             $medico_id = (!empty($_POST['medico_id']) && $_POST['medico_id'] !== '') ? intval($_POST['medico_id']) : null;
 
             // Validación de campos obligatorios
@@ -90,11 +91,6 @@ class UsuarioController {
             }
 
             if ($_POST['action'] == 'create') {
-
-                // Determinar rol basado en si se seleccionó médico
-                // Si hay médico: rol_id = 1 (jefe/administrador)
-                // Si no hay médico: rol_id = 2 (empleado)
-                $rol_id = ($medico_id !== null) ? 1 : 2;
 
                 // Verificar duplicados de usuario
                 $dupCheck = $this->conn->prepare("SELECT id FROM usuarios WHERE usuario = ?");
@@ -149,9 +145,6 @@ class UsuarioController {
                     exit();
                 }
                 $dupCheck->close();
-
-                // Determinar rol basado en si se seleccionó médico
-                $rol_id = ($medico_id !== null) ? 1 : 2;
 
                 $stmt = $this->conn->prepare(
                     "UPDATE usuarios SET usuario = ?, rol_id = ?, medico_id = ? WHERE id = ?"

@@ -11,23 +11,40 @@ class CitasController
         $this->conn = $conn;
     }
 
+    private function esMedico(): bool
+    {
+        return ($_SESSION['rol'] ?? '') === 'empleado';
+    }
+
+    private function miMedicoId(): int
+    {
+        return intval($_SESSION['medico_id'] ?? 0);
+    }
+
     public function handleRequest()
     {
         if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] !== 'changeStatus') {
 
             $paciente_id = $_POST['paciente_id'] ?? '';
             $medico_id   = $_POST['medico_id']   ?? '';
+            $localidad_id= $_POST['localidad_id'] ?? '';
             $fecha       = $_POST['fecha']        ?? '';
             $hora        = $_POST['hora']         ?? '';
             $motivo      = trim($_POST['motivo']  ?? '');
             $estado      = $_POST['estado']       ?? 'pendiente';
 
+            // Empleados solo pueden asignar citas a su propio médico
+            if ($this->esMedico() && $this->miMedicoId() > 0) {
+                $medico_id = $this->miMedicoId();
+            }
+
             $camposFaltantes = [];
-            if (empty($paciente_id)) $camposFaltantes[] = 'Paciente';
-            if (empty($medico_id))   $camposFaltantes[] = 'Médico';
-            if (empty($fecha))       $camposFaltantes[] = 'Fecha';
-            if (empty($hora))        $camposFaltantes[] = 'Hora';
-            if ($motivo === '')      $camposFaltantes[] = 'Motivo de consulta';
+            if (empty($paciente_id))   $camposFaltantes[] = 'Paciente';
+            if (empty($medico_id))     $camposFaltantes[] = 'Médico';
+            if (empty($localidad_id))  $camposFaltantes[] = 'Localidad';
+            if (empty($fecha))         $camposFaltantes[] = 'Fecha';
+            if (empty($hora))          $camposFaltantes[] = 'Hora';
+            if ($motivo === '')        $camposFaltantes[] = 'Motivo de consulta';
 
             if (!empty($camposFaltantes)) {
                 $_SESSION['error'] = 'Los siguientes campos son obligatorios: ' . implode(', ', $camposFaltantes);
@@ -87,8 +104,8 @@ class CitasController
                 }
 
                 $sql = "INSERT INTO citas
-                    (paciente_id, medico_id, fecha, hora, motivo, estado)
-                    VALUES ($paciente_id, $medico_id, '$fecha', '$hora', '$motivo', '$estado')";
+                    (paciente_id, medico_id, localidad_id, fecha, hora, motivo, estado)
+                    VALUES ($paciente_id, $medico_id, $localidad_id, '$fecha', '$hora', '$motivo', '$estado')";
 
                 if ($this->conn->query($sql)) {
                     $_SESSION['success'] = "Cita agendada exitosamente";
@@ -102,6 +119,17 @@ class CitasController
 
             if ($_POST['action'] == 'update') {
                 $id = intval($_POST['id']);
+
+                // Empleados solo pueden editar sus propias citas
+                if ($this->esMedico()) {
+                    $ownCheck = $this->conn->query("SELECT medico_id FROM citas WHERE id=$id")->fetch_assoc();
+                    if (!$ownCheck || $ownCheck['medico_id'] != $this->miMedicoId()) {
+                        $_SESSION['error'] = 'No tiene permiso para modificar esta cita.';
+                        header('Location: ../pages/citas.php');
+                        exit();
+                    }
+                }
+
                 $observacion = $_POST['observacion'] ?? '';
 
                 $citaAnterior = $this->conn->query("SELECT * FROM citas WHERE id=$id")->fetch_assoc();
@@ -152,6 +180,7 @@ class CitasController
                     $sql = "UPDATE citas SET
                     paciente_id=$paciente_id,
                     medico_id=$medico_id,
+                    localidad_id=$localidad_id,
                     fecha='$fecha',
                     hora='$hora',
                     motivo='$motivo',
@@ -171,7 +200,17 @@ class CitasController
         }
 
         if (isset($_GET['action']) && $_GET['action'] == 'cancel' && isset($_GET['id'])) {
-            $id = $_GET['id'];
+            $id = intval($_GET['id']);
+
+            // Empleados solo pueden cancelar sus propias citas
+            if ($this->esMedico()) {
+                $ownCheck = $this->conn->query("SELECT medico_id FROM citas WHERE id=$id")->fetch_assoc();
+                if (!$ownCheck || $ownCheck['medico_id'] != $this->miMedicoId()) {
+                    $_SESSION['error'] = 'No tiene permiso para cancelar esta cita.';
+                    header('Location: ../pages/citas.php');
+                    exit();
+                }
+            }
 
             $citaAnterior = $this->conn->query("SELECT * FROM citas WHERE id=$id")->fetch_assoc();
             $sqlHistorial = "INSERT INTO citas_historial(
@@ -203,6 +242,16 @@ class CitasController
             $estados_validos = ['pendiente', 'completada', 'cancelada'];
 
             if ($id > 0 && in_array($nuevo_estado, $estados_validos)) {
+                // Empleados solo pueden cambiar estado de sus propias citas
+                if ($this->esMedico()) {
+                    $ownCheck = $this->conn->query("SELECT medico_id FROM citas WHERE id=$id")->fetch_assoc();
+                    if (!$ownCheck || $ownCheck['medico_id'] != $this->miMedicoId()) {
+                        $_SESSION['error'] = 'No tiene permiso para modificar esta cita.';
+                        header('Location: ../pages/citas.php');
+                        exit();
+                    }
+                }
+
                 $citaAnterior = $this->conn->query("SELECT * FROM citas WHERE id=$id")->fetch_assoc();
 
                 if ($citaAnterior && in_array($citaAnterior['estado'], ['cancelada', 'completada'])) {
@@ -247,7 +296,18 @@ class CitasController
         }
 
         if (isset($_GET['action']) && $_GET['action'] == 'delete' && isset($_GET['id'])) {
-            $id = $_GET['id'];
+            $id = intval($_GET['id']);
+
+            // Empleados solo pueden eliminar sus propias citas
+            if ($this->esMedico()) {
+                $ownCheck = $this->conn->query("SELECT medico_id FROM citas WHERE id=$id")->fetch_assoc();
+                if (!$ownCheck || $ownCheck['medico_id'] != $this->miMedicoId()) {
+                    $_SESSION['error'] = 'No tiene permiso para eliminar esta cita.';
+                    header('Location: ../pages/citas.php');
+                    exit();
+                }
+            }
+
             if ($this->conn->query("DELETE FROM citas WHERE id=$id")) {
                 $_SESSION['success'] = "Cita eliminada exitosamente";
             } else {
@@ -260,8 +320,12 @@ class CitasController
 
     public function obtenerPorId($id)
     {
-        $result = $this->conn->query("SELECT * FROM citas WHERE id=$id");
-        return $result->fetch_assoc();
+        $id = intval($id);
+        $andMedico = ($this->esMedico() && $this->miMedicoId() > 0)
+            ? ' AND medico_id = ' . $this->miMedicoId()
+            : '';
+        $result = $this->conn->query("SELECT * FROM citas WHERE id=$id$andMedico");
+        return $result ? $result->fetch_assoc() : null;
     }
 
     public function obtenerPacientes()
@@ -271,6 +335,9 @@ class CitasController
 
     public function obtenerMedicos()
     {
+        if ($this->esMedico() && $this->miMedicoId() > 0) {
+            return $this->conn->query("SELECT * FROM medicos WHERE id = " . $this->miMedicoId());
+        }
         return $this->conn->query("SELECT * FROM medicos ORDER BY apellido, nombre");
     }
 
@@ -279,15 +346,26 @@ class CitasController
         return $this->conn->query("SELECT * FROM enfermedades ORDER BY nombre");
     }
 
+    public function obtenerLocalidades()
+    {
+        return $this->conn->query("SELECT * FROM localidades ORDER BY nombre");
+    }
+
     public function obtenerTodas()
     {
-        $sql = "SELECT c.*, 
+        $where = ($this->esMedico() && $this->miMedicoId() > 0)
+            ? 'WHERE c.medico_id = ' . $this->miMedicoId()
+            : '';
+        $sql = "SELECT c.*,
                 CONCAT(p.nombre, ' ', p.apellido) as paciente_nombre,
                 CONCAT(m.nombre, ' ', m.apellido) as medico_nombre,
-                m.especialidad
+                m.especialidad,
+                l.nombre AS localidad
                 FROM citas c
                 INNER JOIN pacientes p ON c.paciente_id = p.id
                 INNER JOIN medicos m ON c.medico_id = m.id
+                INNER JOIN localidades l ON c.localidad_id = l.id
+                $where
                 ORDER BY c.fecha DESC, c.hora DESC";
         return $this->conn->query($sql);
     }

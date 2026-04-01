@@ -66,7 +66,7 @@ include '../includes/headerLogin.php';
                                         </div>
                                     </form>
 
-                                    <p class="text-center mt-4 mb-0">Cuenta inactiva? <a href="../pages/activarCuenta.php">Activar cuenta</a></p>
+                                    <p class="text-center mt-4 mb-0 text-muted" style="font-size:0.85rem;">Cuenta inactiva? Inicia sesión con tu contraseña temporal para activarla.</p>
                                 </div>
                             </div>
                         </div>

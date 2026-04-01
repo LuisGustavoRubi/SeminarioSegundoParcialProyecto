@@ -116,6 +116,7 @@
                                 Historial Citas
                             </a>
                         </li>
+                        <?php if (($_SESSION['rol'] ?? '') === 'jefe'): ?>
                         <li class="nav-item">
                             <a class="nav-link <?php echo isset($current_page) && $current_page == 'usuarios' ? 'active' : ''; ?> rounded"
                                 href="<?php echo basename($_SERVER['PHP_SELF']) == 'usuarios.php' ? '#' : (basename($_SERVER['PHP_SELF']) == 'index.php' ? 'pages/usuarios.php' : 'usuarios.php'); ?>">
@@ -123,6 +124,7 @@
                                 Usuarios
                             </a>
                         </li>
+                        <?php endif; ?>
                     </ul>
 
                     <hr>
@@ -130,6 +132,32 @@
                     <div class="px-3 text-muted small">
                         <p class="mb-1">Sistema de Gestión</p>
                         <p class="mb-0">Versión 1.1</p>
+                    </div>
+
+                    <hr>
+
+                    <div class="px-3 small">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <i class="bi bi-person-circle text-primary" style="font-size:1.4rem;"></i>
+                            <div>
+                                <div class="fw-semibold text-dark" style="line-height:1.2;">
+                                    <?php echo htmlspecialchars($_SESSION['usuario'] ?? '', ENT_QUOTES, 'UTF-8'); ?>
+                                </div>
+                                <div class="text-muted" style="font-size:0.75rem;">
+                                    <?php echo htmlspecialchars($_SESSION['rol'] ?? '', ENT_QUOTES, 'UTF-8'); ?>
+                                </div>
+                            </div>
+                        </div>
+                        <?php
+                            $logout_url = basename($_SERVER['PHP_SELF']) == 'index.php'
+                                ? 'pages/logout.php'
+                                : 'logout.php';
+                        ?>
+                        <a href="<?php echo $logout_url; ?>"
+                           class="btn btn-outline-danger btn-sm w-100"
+                           onclick="return confirm('¿Cerrar sesión?')">
+                            <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+                        </a>
                     </div>
                 </div>
             </nav>

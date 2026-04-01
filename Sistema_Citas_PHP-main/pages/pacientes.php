@@ -252,9 +252,9 @@ include '../includes/header.php';
                             <?php while ($p = $pacientes->fetch_assoc()): ?>
                             <tr>
                                 <td><strong><?php echo htmlspecialchars($p['cedula'], ENT_QUOTES, 'UTF-8'); ?></strong></td>
-                                <td><?php echo htmlspecialchars(normalizar_texto($p['nombre']) . ' ' . normalizar_texto($p['apellido']), ENT_QUOTES, 'UTF-8'); ?></td>
-                                <td><?php echo $p['telefono'] ?: '-'; ?></td>
-                                <td><?php echo $p['email'] ?: '-'; ?></td>
+                                <td><?php echo htmlspecialchars($p['nombre'] . ' ' . $p['apellido'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td><?php echo htmlspecialchars($p['telefono'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td><?php echo htmlspecialchars($p['email'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
                                 <td><?php echo $p['fecha_nacimiento'] ? date('d/m/Y', strtotime($p['fecha_nacimiento'])) : '-'; ?></td>
                                 <td>
                                     <div class="btn-group btn-group-sm" role="group">
@@ -262,7 +262,7 @@ include '../includes/header.php';
                                             <i class="bi bi-pencil"></i>
                                         </a>
                                         <button type="button" class="btn btn-outline-danger"
-                                                onclick="confirmarEliminacion(<?php echo $p['id']; ?>, '<?php echo htmlspecialchars(normalizar_texto($p['nombre']) . ' ' . normalizar_texto($p['apellido']), ENT_QUOTES, 'UTF-8'); ?>', 'al paciente')"
+                                                onclick="confirmarEliminacion(<?php echo $p['id']; ?>, '<?php echo htmlspecialchars($p['nombre'] . ' ' . $p['apellido'], ENT_QUOTES, 'UTF-8'); ?>', 'al paciente')"
                                                 title="Eliminar">
                                             <i class="bi bi-trash"></i>
                                         </button>
