@@ -4,8 +4,8 @@ require_once '../includes/config.php';
 
 class CitasController
 {
-
     private $conn;
+
     public function __construct($conn)
     {
         $this->conn = $conn;
@@ -21,42 +21,105 @@ class CitasController
         return intval($_SESSION['medico_id'] ?? 0);
     }
 
+    private function usuarioId(): int
+    {
+        return intval($_SESSION['user_id'] ?? 0);
+    }
+
+    // Tipo de cambio
+    private function determinarTipoCambio(array $anterior, array $nuevo): string
+    {
+        if ($nuevo['estado'] === 'cancelada') {
+            return 'cancelacion';
+        }
+
+        if ($anterior['fecha'] !== $nuevo['fecha'] || $anterior['hora'] !== $nuevo['hora']) {
+            return 'reprogramacion';
+        }
+
+        return 'modificacion';
+    }
+
+    // Insertar en el historial
+    private function insertarHistorial(array $datos): int
+    {
+        $usuario_id = $this->usuarioId();
+        $enfermedad_id = intval($datos['enfermedad_id'] ?? 0);
+        $enfSql = $enfermedad_id > 0 ? $enfermedad_id : 'NULL';
+        $localidad_id = intval($datos['localidad_id'] ?? 0);
+
+        $sql = "INSERT INTO citas_historial (
+                    cita_id, usuario_id, tipo_cambio, observacion, enfermedad_id, localidad_id,
+                    anterior_paciente_id, anterior_medico_id, anterior_fecha, anterior_hora, anterior_motivo, anterior_estado,
+                    nuevo_paciente_id, nuevo_medico_id, nuevo_fecha, nuevo_hora, nuevo_motivo, nuevo_estado
+                ) VALUES (
+                    {$datos['cita_id']}, $usuario_id, '{$datos['tipo_cambio']}', '{$datos['observacion']}', $enfSql, $localidad_id,
+                    {$datos['ant_paciente']}, {$datos['ant_medico']}, '{$datos['ant_fecha']}', '{$datos['ant_hora']}', '{$datos['ant_motivo']}', '{$datos['ant_estado']}',
+                    {$datos['nvo_paciente']}, {$datos['nvo_medico']}, '{$datos['nvo_fecha']}', '{$datos['nvo_hora']}', '{$datos['nvo_motivo']}', '{$datos['nvo_estado']}'
+                )";
+
+        $this->conn->query($sql);
+        return $this->conn->insert_id;
+    }
+
+    // Medicamentos en el historial
+    private function insertarMedicamentosHistorial(int $historial_id, array $med_ids): void
+    {
+        foreach ($med_ids as $med_id) {
+            $med_id = intval($med_id);
+            if ($med_id > 0) {
+                $this->conn->query("INSERT INTO citas_historial_medicamentos (historial_id, medicamento_id) VALUES ($historial_id, $med_id)");
+            }
+        }
+    }
+
+    // Restar del stock el medicamento usado
+    private function descontarStock(int $localidad_id, array $med_ids): void
+    {
+        foreach ($med_ids as $med_id) {
+            $med_id = intval($med_id);
+            if ($med_id > 0) {
+                $this->conn->query(
+                    "UPDATE localidad_medicamentos SET stock = GREATEST(0, stock - 1) WHERE localidad_id = $localidad_id AND medicamento_id = $med_id"
+                );
+            }
+        }
+    }
+
     public function handleRequest()
     {
-        // medicamento por localidad
+        // Medicamentos disponibles por localidad
         if (isset($_GET['action']) && $_GET['action'] === 'getMedicamentos' && isset($_GET['localidad_id'])) {
             $meds = $this->obtenerMedicamentosPorLocalidad($_GET['localidad_id']);
             $result = [];
-            while ($row = $meds->fetch_assoc()) {
-                $result[] = $row;
-            }
+            while ($row = $meds->fetch_assoc()) {$result[] = $row;}
             header('Content-Type: application/json');
             echo json_encode($result);
             exit();
         }
 
+        // CREATE Y UPDATE
         if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] !== 'changeStatus') {
 
             $paciente_id = $_POST['paciente_id'] ?? '';
-            $medico_id   = $_POST['medico_id']   ?? '';
-            $localidad_id= $_POST['localidad_id'] ?? '';
-            $fecha       = $_POST['fecha']        ?? '';
-            $hora        = $_POST['hora']         ?? '';
-            $motivo      = trim($_POST['motivo']  ?? '');
-            $estado      = $_POST['estado']       ?? 'pendiente';
+            $medico_id = $_POST['medico_id'] ?? '';
+            $localidad_id = $_POST['localidad_id'] ?? '';
+            $fecha = $_POST['fecha'] ?? '';
+            $hora = $_POST['hora'] ?? '';
+            $motivo = trim($_POST['motivo'] ?? '');
+            $estado = $_POST['estado'] ?? 'pendiente';
 
-            // Empleados solo pueden asignar citas a su propio médico
             if ($this->esMedico() && $this->miMedicoId() > 0) {
                 $medico_id = $this->miMedicoId();
             }
 
             $camposFaltantes = [];
-            if (empty($paciente_id))   $camposFaltantes[] = 'Paciente';
-            if (empty($medico_id))     $camposFaltantes[] = 'Médico';
-            if (empty($localidad_id))  $camposFaltantes[] = 'Localidad';
-            if (empty($fecha))         $camposFaltantes[] = 'Fecha';
-            if (empty($hora))          $camposFaltantes[] = 'Hora';
-            if ($motivo === '')        $camposFaltantes[] = 'Motivo de consulta';
+            if (empty($paciente_id)) $camposFaltantes[] = 'Paciente';
+            if (empty($medico_id)) $camposFaltantes[] = 'Médico';
+            if (empty($localidad_id)) $camposFaltantes[] = 'Localidad';
+            if (empty($fecha)) $camposFaltantes[] = 'Fecha';
+            if (empty($hora)) $camposFaltantes[] = 'Hora';
+            if ($motivo === '') $camposFaltantes[] = 'Motivo de consulta';
 
             if (!empty($camposFaltantes)) {
                 $_SESSION['error'] = 'Los siguientes campos son obligatorios: ' . implode(', ', $camposFaltantes);
@@ -80,7 +143,7 @@ class CitasController
 
             $ahoraHN = new DateTime('now', new DateTimeZone('America/Tegucigalpa'));
             if ($fecha < $ahoraHN->format('Y-m-d')) {
-                $_SESSION['error'] = 'No se pueden agendar citas en fechas pasadas. Seleccione hoy o una fecha futura.';
+                $_SESSION['error'] = 'No se pueden agendar citas en fechas pasadas.';
                 $_SESSION['form_data'] = $_POST;
                 $redirect = ($_POST['action'] === 'create')
                     ? '../pages/citas.php?action=new'
@@ -90,7 +153,7 @@ class CitasController
             }
 
             if ($fecha === $ahoraHN->format('Y-m-d') && $hora < $ahoraHN->format('H:i')) {
-                $_SESSION['error'] = 'No se pueden agendar citas para horas que ya pasaron. Seleccione una hora futura.';
+                $_SESSION['error'] = 'No se pueden agendar citas para horas que ya pasaron.';
                 $_SESSION['form_data'] = $_POST;
                 $redirect = ($_POST['action'] === 'create')
                     ? '../pages/citas.php?action=new'
@@ -99,24 +162,20 @@ class CitasController
                 exit();
             }
 
+            // CREATE
             if ($_POST['action'] == 'create') {
-
                 $intervaloMin = 30 * 60;
-                $check = $this->conn->query("SELECT id FROM citas
-                    WHERE medico_id=$medico_id
-                    AND fecha='$fecha'
-                    AND estado != 'cancelada'
-                    AND ABS(TIME_TO_SEC(TIMEDIFF(hora, '$hora'))) < $intervaloMin");
+                $check = $this->conn->query("SELECT id FROM citas WHERE medico_id=$medico_id AND fecha='$fecha' AND estado != 'cancelada' 
+                AND ABS(TIME_TO_SEC(TIMEDIFF(hora, '$hora'))) < $intervaloMin");
 
                 if ($check->num_rows > 0) {
-                    $_SESSION['error'] = "El médico ya tiene una cita dentro de los 30 minutos de ese horario. Seleccione otro horario.";
+                    $_SESSION['error'] = "El médico ya tiene una cita dentro de los 30 minutos de ese horario.";
                     $_SESSION['form_data'] = $_POST;
                     header("Location: ../pages/citas.php?action=new");
                     exit();
                 }
 
-                $sql = "INSERT INTO citas
-                    (paciente_id, medico_id, localidad_id, fecha, hora, motivo, estado)
+                $sql = "INSERT INTO citas (paciente_id, medico_id, localidad_id, fecha, hora, motivo, estado)
                     VALUES ($paciente_id, $medico_id, $localidad_id, '$fecha', '$hora', '$motivo', '$estado')";
 
                 if ($this->conn->query($sql)) {
@@ -129,92 +188,102 @@ class CitasController
                 exit();
             }
 
+            // UPDATE
             if ($_POST['action'] == 'update') {
                 $id = intval($_POST['id']);
 
-                // Empleados solo pueden editar sus propias citas
                 if ($this->esMedico()) {
                     $ownCheck = $this->conn->query("SELECT medico_id FROM citas WHERE id=$id")->fetch_assoc();
                     if (!$ownCheck || $ownCheck['medico_id'] != $this->miMedicoId()) {
-                        $_SESSION['error'] = 'No tiene permiso para modificar esta cita.';
+                        $_SESSION['error'] = 'No tiene permisos para modificar esta cita.';
                         header('Location: ../pages/citas.php');
                         exit();
                     }
                 }
 
-                $observacion = $_POST['observacion'] ?? '';
-
+                $observacion = $this->conn->real_escape_string($_POST['observacion'] ?? '');
                 $citaAnterior = $this->conn->query("SELECT * FROM citas WHERE id=$id")->fetch_assoc();
 
                 if ($citaAnterior && in_array($citaAnterior['estado'], ['cancelada', 'completada'])) {
-                    $_SESSION['error'] = 'No se puede modificar una cita ' . $citaAnterior['estado'] . '. Cree una nueva cita para continuar.';
+                    $_SESSION['error'] = 'No se puede modificar una cita ' . $citaAnterior['estado'] . '.';
                     header("Location: ../pages/citas.php?action=edit&id=$id");
                     exit();
                 }
 
                 $intervaloMin = 30 * 60;
-                $check = $this->conn->query("SELECT id FROM citas
-                WHERE medico_id=$medico_id
-                AND fecha='$fecha'
-                AND estado != 'cancelada'
-                AND ABS(TIME_TO_SEC(TIMEDIFF(hora, '$hora'))) < $intervaloMin
-                AND id != $id");
+                $check = $this->conn->query("SELECT id FROM citas WHERE medico_id=$medico_id AND fecha='$fecha' AND estado != 'cancelada'
+                    AND ABS(TIME_TO_SEC(TIMEDIFF(hora, '$hora'))) < $intervaloMin
+                    AND id != $id");
 
                 if ($check->num_rows > 0) {
-                    $_SESSION['error'] = "El médico ya tiene una cita dentro de los 30 minutos de ese horario. Seleccione otro horario.";
+                    $_SESSION['error'] = "El médico ya tiene una cita dentro de los 30 minutos de ese horario.";
                     $_SESSION['form_data'] = $_POST;
                     header("Location: ../pages/citas.php?action=edit&id=$id");
                     exit();
-                } else {
-                    $tipo_cambio = "modificacion";
-                    if ($estado == "cancelada") {
-                        $tipo_cambio = "cancelacion";
-                    }
-                    if ($citaAnterior['fecha'] != $fecha || $citaAnterior['hora'] != $hora) {
-                        $tipo_cambio = "reprogramacion";
-                    }
+                }
 
-                    $sqlHistorial = "INSERT INTO citas_historial(
-                    cita_id, tipo_cambio, observacion,
-                    anterior_paciente_id, anterior_medico_id, anterior_fecha, anterior_hora, anterior_motivo, anterior_estado,
-                    nuevo_paciente_id, nuevo_medico_id, nuevo_fecha, nuevo_hora, nuevo_motivo, nuevo_estado
-                    ) VALUES (
-                    $id, '$tipo_cambio', '$observacion',
-                    {$citaAnterior['paciente_id']}, {$citaAnterior['medico_id']}, '{$citaAnterior['fecha']}', '{$citaAnterior['hora']}', '{$citaAnterior['motivo']}', '{$citaAnterior['estado']}',
-                    $paciente_id, $medico_id, '$fecha', '$hora', '$motivo', '$estado'
-                    )";
-                    $this->conn->query($sqlHistorial);
+                // Tipo de cambio
+                $tipo_cambio = $this->determinarTipoCambio(
+                    ['fecha' => $citaAnterior['fecha'], 'hora' => $citaAnterior['hora'], 'estado' => $citaAnterior['estado']],
+                    ['fecha' => $fecha, 'hora' => $hora, 'estado' => $estado]
+                );
 
-                    // Si se está completando desde el formulario de edición, guardar enfermedad
-                    $enfermedad_id = intval($_POST['enfermedad_id'] ?? 0);
-                    $enfermedadSql = ($estado === 'completada' && $enfermedad_id > 0) ? ", enfermedad_id=$enfermedad_id" : '';
+                $enfermedad_id = intval($_POST['enfermedad_id'] ?? 0);
+                $med_ids = !empty($_POST['medicamentos'])
+                    ? array_filter(array_map('intval', explode(',', $_POST['medicamentos'])))
+                    : [];
 
-                    $sql = "UPDATE citas SET
-                    paciente_id=$paciente_id,
-                    medico_id=$medico_id,
-                    localidad_id=$localidad_id,
-                    fecha='$fecha',
-                    hora='$hora',
-                    motivo='$motivo',
-                    estado='$estado'
-                    $enfermedadSql
-                    WHERE id=$id";
+                $historial_id = $this->insertarHistorial([
+                    'cita_id' => $id,
+                    'tipo_cambio' => $tipo_cambio,
+                    'observacion' => $observacion,
+                    'enfermedad_id' => $enfermedad_id,
+                    'localidad_id' => $localidad_id,
+                    'ant_paciente' => $citaAnterior['paciente_id'],
+                    'ant_medico' => $citaAnterior['medico_id'],
+                    'ant_fecha' => $citaAnterior['fecha'],
+                    'ant_hora' => $citaAnterior['hora'],
+                    'ant_motivo' => $this->conn->real_escape_string($citaAnterior['motivo']),
+                    'ant_estado' => $citaAnterior['estado'],
+                    'nvo_paciente' => $paciente_id,
+                    'nvo_medico' => $medico_id,
+                    'nvo_fecha' => $fecha,
+                    'nvo_hora' => $hora,
+                    'nvo_motivo' => $this->conn->real_escape_string($motivo),
+                    'nvo_estado' => $estado,
+                ]);
 
-                    if ($this->conn->query($sql)) {
-                        $_SESSION['success'] = "Cita actualizada exitosamente";
-                    } else {
-                        $_SESSION['error'] = "Error al actualizar cita";
+                if ($estado === 'completada' && !empty($med_ids)) {
+                    $this->insertarMedicamentosHistorial($historial_id, $med_ids);
+                    $this->descontarStock(intval($localidad_id), $med_ids);
+
+                    $this->conn->query("DELETE FROM cita_medicamentos WHERE cita_id=$id");
+                    foreach ($med_ids as $mid) {
+                        $this->conn->query("INSERT INTO cita_medicamentos (cita_id, medicamento_id) VALUES ($id, $mid)");
                     }
                 }
+
+                $enfermedadSql = ($estado === 'completada' && $enfermedad_id > 0) ? ", enfermedad_id=$enfermedad_id" : '';
+
+                $sql = "UPDATE citas SET paciente_id=$paciente_id, medico_id=$medico_id, localidad_id=$localidad_id,
+                    fecha='$fecha', hora='$hora', motivo='$motivo', estado='$estado'
+                    $enfermedadSql WHERE id=$id";
+
+                if ($this->conn->query($sql)) {
+                    $_SESSION['success'] = "Cita actualizada exitosamente";
+                } else {
+                    $_SESSION['error'] = "Error al actualizar cita";
+                }
+
                 header("Location: ../pages/citas.php");
                 exit();
             }
         }
 
+        // CANCEL
         if (isset($_GET['action']) && $_GET['action'] == 'cancel' && isset($_GET['id'])) {
             $id = intval($_GET['id']);
 
-            // Empleados solo pueden cancelar sus propias citas
             if ($this->esMedico()) {
                 $ownCheck = $this->conn->query("SELECT medico_id FROM citas WHERE id=$id")->fetch_assoc();
                 if (!$ownCheck || $ownCheck['medico_id'] != $this->miMedicoId()) {
@@ -224,17 +293,27 @@ class CitasController
                 }
             }
 
-            $citaAnterior = $this->conn->query("SELECT * FROM citas WHERE id=$id")->fetch_assoc();
-            $sqlHistorial = "INSERT INTO citas_historial(
-            cita_id, tipo_cambio, observacion,
-            anterior_paciente_id, anterior_medico_id, anterior_fecha, anterior_hora, anterior_motivo, anterior_estado,
-            nuevo_paciente_id, nuevo_medico_id, nuevo_fecha, nuevo_hora, nuevo_motivo, nuevo_estado
-            ) VALUES (
-            $id, 'cancelacion', 'Cita cancelada',
-            {$citaAnterior['paciente_id']}, {$citaAnterior['medico_id']}, '{$citaAnterior['fecha']}', '{$citaAnterior['hora']}', '{$citaAnterior['motivo']}', '{$citaAnterior['estado']}',
-            {$citaAnterior['paciente_id']}, {$citaAnterior['medico_id']}, '{$citaAnterior['fecha']}', '{$citaAnterior['hora']}', '{$citaAnterior['motivo']}', 'cancelada'
-            )";
-            $this->conn->query($sqlHistorial);
+            $cita = $this->conn->query("SELECT * FROM citas WHERE id=$id")->fetch_assoc();
+
+            $this->insertarHistorial([
+                'cita_id' => $id,
+                'tipo_cambio' => 'cancelacion',
+                'observacion' => 'Cita cancelada',
+                'enfermedad_id' => 0,
+                'localidad_id' => $cita['localidad_id'],
+                'ant_paciente'=> $cita['paciente_id'],
+                'ant_medico' => $cita['medico_id'],
+                'ant_fecha' => $cita['fecha'],
+                'ant_hora' => $cita['hora'],
+                'ant_motivo' => $this->conn->real_escape_string($cita['motivo']),
+                'ant_estado' => $cita['estado'],
+                'nvo_paciente' => $cita['paciente_id'],
+                'nvo_medico' => $cita['medico_id'],
+                'nvo_fecha' => $cita['fecha'],
+                'nvo_hora' => $cita['hora'],
+                'nvo_motivo' => $this->conn->real_escape_string($cita['motivo']),
+                'nvo_estado' => 'cancelada',
+            ]);
 
             if ($this->conn->query("UPDATE citas SET estado='cancelada' WHERE id=$id")) {
                 $_SESSION['success'] = "Cita cancelada exitosamente";
@@ -246,15 +325,18 @@ class CitasController
             exit();
         }
 
-        // Cambio rápido de estado desde el listado
+        // CHANGE STATUS
         if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'changeStatus') {
-            $id            = intval($_POST['id'] ?? 0);
-            $nuevo_estado  = $_POST['estado'] ?? '';
+            $id = intval($_POST['id'] ?? 0);
+            $nuevo_estado = $_POST['estado'] ?? '';
             $enfermedad_id = intval($_POST['enfermedad_id'] ?? 0);
+            $med_ids = !empty($_POST['medicamentos'])
+                ? array_filter(array_map('intval', explode(',', $_POST['medicamentos'])))
+                : [];
             $estados_validos = ['pendiente', 'completada', 'cancelada'];
 
             if ($id > 0 && in_array($nuevo_estado, $estados_validos)) {
-                // Empleados solo pueden cambiar estado de sus propias citas
+
                 if ($this->esMedico()) {
                     $ownCheck = $this->conn->query("SELECT medico_id FROM citas WHERE id=$id")->fetch_assoc();
                     if (!$ownCheck || $ownCheck['medico_id'] != $this->miMedicoId()) {
@@ -267,7 +349,7 @@ class CitasController
                 $citaAnterior = $this->conn->query("SELECT * FROM citas WHERE id=$id")->fetch_assoc();
 
                 if ($citaAnterior && in_array($citaAnterior['estado'], ['cancelada', 'completada'])) {
-                    $_SESSION['error'] = 'No se puede modificar una cita ' . $citaAnterior['estado'] . '. Cree una nueva cita para continuar.';
+                    $_SESSION['error'] = 'No se puede modificar una cita ' . $citaAnterior['estado'] . '.';
                     header('Location: ../pages/citas.php');
                     exit();
                 }
@@ -280,18 +362,37 @@ class CitasController
 
                 if ($citaAnterior && $citaAnterior['estado'] !== $nuevo_estado) {
                     $tipo_cambio = $nuevo_estado === 'cancelada' ? 'cancelacion' : 'modificacion';
-                    $motivo_esc  = $this->conn->real_escape_string($citaAnterior['motivo']);
+                    $motivo_esc = $this->conn->real_escape_string($citaAnterior['motivo']);
 
-                    $sqlHistorial = "INSERT INTO citas_historial(
-                        cita_id, tipo_cambio, observacion,
-                        anterior_paciente_id, anterior_medico_id, anterior_fecha, anterior_hora, anterior_motivo, anterior_estado,
-                        nuevo_paciente_id, nuevo_medico_id, nuevo_fecha, nuevo_hora, nuevo_motivo, nuevo_estado
-                    ) VALUES (
-                        $id, '$tipo_cambio', 'Cambio de estado desde el listado',
-                        {$citaAnterior['paciente_id']}, {$citaAnterior['medico_id']}, '{$citaAnterior['fecha']}', '{$citaAnterior['hora']}', '$motivo_esc', '{$citaAnterior['estado']}',
-                        {$citaAnterior['paciente_id']}, {$citaAnterior['medico_id']}, '{$citaAnterior['fecha']}', '{$citaAnterior['hora']}', '$motivo_esc', '$nuevo_estado'
-                    )";
-                    $this->conn->query($sqlHistorial);
+                    $historial_id = $this->insertarHistorial([
+                        'cita_id' => $id,
+                        'tipo_cambio' => $tipo_cambio,
+                        'observacion' => 'Cambio de estado desde el listado',
+                        'enfermedad_id' => $enfermedad_id,
+                        'localidad_id' => $citaAnterior['localidad_id'],
+                        'ant_paciente' => $citaAnterior['paciente_id'],
+                        'ant_medico' => $citaAnterior['medico_id'],
+                        'ant_fecha' => $citaAnterior['fecha'],
+                        'ant_hora' => $citaAnterior['hora'],
+                        'ant_motivo' => $motivo_esc,
+                        'ant_estado' => $citaAnterior['estado'],
+                        'nvo_paciente' => $citaAnterior['paciente_id'],
+                        'nvo_medico' => $citaAnterior['medico_id'],
+                        'nvo_fecha' => $citaAnterior['fecha'],
+                        'nvo_hora' => $citaAnterior['hora'],
+                        'nvo_motivo' => $motivo_esc,
+                        'nvo_estado' => $nuevo_estado,
+                    ]);
+
+                    if ($nuevo_estado === 'completada' && !empty($med_ids)) {
+                        $this->insertarMedicamentosHistorial($historial_id, $med_ids);
+                        $this->descontarStock(intval($citaAnterior['localidad_id']), $med_ids);
+
+                        $this->conn->query("DELETE FROM cita_medicamentos WHERE cita_id=$id");
+                        foreach ($med_ids as $mid) {
+                            $this->conn->query("INSERT INTO cita_medicamentos (cita_id, medicamento_id) VALUES ($id, $mid)");
+                        }
+                    }
 
                     $enfermedadSql = ($nuevo_estado === 'completada') ? ", enfermedad_id=$enfermedad_id" : '';
 
@@ -307,34 +408,10 @@ class CitasController
             exit();
         }
 
-        // Cuando estado es completada
-        if (isset($_POST['action']) && $_POST['action'] === 'update') {
-            $id = intval($_POST['id']);
-            $observacion = $_POST['observacion'] ?? '';
-            $enfermedad_id = intval($_POST['enfermedad_id'] ?? 0);
-
-            // Inserta o actualiza medicamentos si la cita se completa
-            if ($estado === 'completada' && $enfermedad_id > 0) {
-                $this->conn->query("DELETE FROM cita_medicamentos WHERE cita_id=$id");
-                if (!empty($_POST['medicamentos'])) {
-                    $meds = explode(',', $_POST['medicamentos']);
-                    foreach ($meds as $med_id) {
-                        $med_id = intval($med_id);
-                        $this->conn->query("INSERT INTO cita_medicamentos (cita_id, medicamento_id) VALUES ($id, $med_id)");
-                    }
-                }
-                $sqlUpdate = "UPDATE citas SET estado='$estado', enfermedad_id=$enfermedad_id WHERE id=$id";
-                $this->conn->query($sqlUpdate);
-                $_SESSION['success'] = 'Cita completada correctamente con medicamentos.';
-                header('Location: ../pages/citas.php');
-                exit();
-            }
-        }
-
+        // DELETE
         if (isset($_GET['action']) && $_GET['action'] == 'delete' && isset($_GET['id'])) {
             $id = intval($_GET['id']);
 
-            // Empleados solo pueden eliminar sus propias citas
             if ($this->esMedico()) {
                 $ownCheck = $this->conn->query("SELECT medico_id FROM citas WHERE id=$id")->fetch_assoc();
                 if (!$ownCheck || $ownCheck['medico_id'] != $this->miMedicoId()) {
@@ -354,12 +431,12 @@ class CitasController
         }
     }
 
+    // Funciones querys
+
     public function obtenerPorId($id)
     {
         $id = intval($id);
-        $andMedico = ($this->esMedico() && $this->miMedicoId() > 0)
-            ? ' AND medico_id = ' . $this->miMedicoId()
-            : '';
+        $andMedico = ($this->esMedico() && $this->miMedicoId() > 0) ? ' AND medico_id = ' . $this->miMedicoId() : '';
         $result = $this->conn->query("SELECT * FROM citas WHERE id=$id$andMedico");
         return $result ? $result->fetch_assoc() : null;
     }
@@ -386,27 +463,29 @@ class CitasController
     {
         return $this->conn->query("SELECT * FROM localidades ORDER BY nombre");
     }
-    public function obtenerMedicamentosPorLocalidad($localidad_id)
-    {
-        $localidad_id = intval($localidad_id);
-        return $this->conn->query("SELECT m.id, m.nombre, lm.stock FROM medicamentos m
-            INNER JOIN localidad_medicamentos lm ON lm.medicamento_id = m.id
-            WHERE lm.localidad_id = $localidad_id AND lm.stock > 0
-            ORDER BY m.nombre ASC");
-    }
+
     public function obtenerMedicamentos()
     {
         return $this->conn->query("SELECT id, nombre FROM medicamentos ORDER BY nombre ASC");
     }
 
+    public function obtenerMedicamentosPorLocalidad($localidad_id)
+    {
+        $localidad_id = intval($localidad_id);
+        return $this->conn->query(
+            "SELECT m.id, m.nombre, lm.stock FROM medicamentos m
+            INNER JOIN localidad_medicamentos lm ON lm.medicamento_id = m.id
+            WHERE lm.localidad_id = $localidad_id AND lm.stock > 0
+            ORDER BY m.nombre ASC"
+        );
+    }
+
     public function obtenerTodas()
     {
-        $where = ($this->esMedico() && $this->miMedicoId() > 0)
-            ? 'WHERE c.medico_id = ' . $this->miMedicoId()
-            : '';
+        $where = ($this->esMedico() && $this->miMedicoId() > 0) ? 'WHERE c.medico_id = ' . $this->miMedicoId() : '';
         $sql = "SELECT c.*,
-                CONCAT(p.nombre, ' ', p.apellido) as paciente_nombre,
-                CONCAT(m.nombre, ' ', m.apellido) as medico_nombre,
+                CONCAT(p.nombre, ' ', p.apellido) AS paciente_nombre,
+                CONCAT(m.nombre, ' ', m.apellido) AS medico_nombre,
                 m.especialidad,
                 l.nombre AS localidad
                 FROM citas c

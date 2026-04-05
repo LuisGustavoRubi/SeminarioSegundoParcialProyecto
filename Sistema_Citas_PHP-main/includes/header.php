@@ -122,6 +122,13 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link <?php echo isset($current_page) && $current_page == 'medicamentos' ? 'active' : ''; ?> rounded"
+                                href="<?php echo basename($_SERVER['PHP_SELF']) == 'medicamentos.php' ? '#' : (basename($_SERVER['PHP_SELF']) == 'index.php' ? 'pages/medicamentos.php' : 'medicamentos.php'); ?>">
+                                <i class="bi bi-capsule"></i>
+                                Medicamentos
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link <?php echo isset($current_page) && $current_page == 'citas' ? 'active' : ''; ?> rounded"
                                 href="<?php echo basename($_SERVER['PHP_SELF']) == 'citas.php' ? '#' : (basename($_SERVER['PHP_SELF']) == 'index.php' ? 'pages/citas.php' : 'citas.php'); ?>">
                                 <i class="bi bi-calendar-check"></i>
@@ -136,13 +143,13 @@
                             </a>
                         </li>
                         <?php if (($_SESSION['rol'] ?? '') === 'jefe'): ?>
-                        <li class="nav-item">
-                            <a class="nav-link <?php echo isset($current_page) && $current_page == 'usuarios' ? 'active' : ''; ?> rounded"
-                                href="<?php echo basename($_SERVER['PHP_SELF']) == 'usuarios.php' ? '#' : (basename($_SERVER['PHP_SELF']) == 'index.php' ? 'pages/usuarios.php' : 'usuarios.php'); ?>">
-                                <i class="bi bi-people"></i>
-                                Usuarios
-                            </a>
-                        </li>
+                            <li class="nav-item">
+                                <a class="nav-link <?php echo isset($current_page) && $current_page == 'usuarios' ? 'active' : ''; ?> rounded"
+                                    href="<?php echo basename($_SERVER['PHP_SELF']) == 'usuarios.php' ? '#' : (basename($_SERVER['PHP_SELF']) == 'index.php' ? 'pages/usuarios.php' : 'usuarios.php'); ?>">
+                                    <i class="bi bi-people"></i>
+                                    Usuarios
+                                </a>
+                            </li>
                         <?php endif; ?>
                     </ul>
 
@@ -166,13 +173,13 @@
                             </div>
                         </div>
                         <?php
-                            $logout_url = basename($_SERVER['PHP_SELF']) == 'index.php'
-                                ? 'pages/logout.php'
-                                : 'logout.php';
+                        $logout_url = basename($_SERVER['PHP_SELF']) == 'index.php'
+                            ? 'pages/logout.php'
+                            : 'logout.php';
                         ?>
                         <a href="<?php echo $logout_url; ?>"
-                           class="btn btn-outline-danger btn-sm w-100"
-                           onclick="return confirm('¿Cerrar sesión?')">
+                            class="btn btn-outline-danger btn-sm w-100"
+                            onclick="return confirm('¿Cerrar sesión?')">
                             <i class="bi bi-box-arrow-right"></i> Cerrar sesión
                         </a>
                     </div>

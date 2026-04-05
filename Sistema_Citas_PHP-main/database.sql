@@ -232,3 +232,39 @@ INSERT IGNORE INTO citas (paciente_id, medico_id, fecha, hora, motivo, estado, l
 (5, 4, DATE_ADD(CURDATE(), INTERVAL 2 DAY), '15:30:00', 'Consulta dermatológica', 'pendiente', 1),
 (1, 2, DATE_SUB(CURDATE(), INTERVAL 7 DAY), '09:00:00', 'Consulta general', 'completada', 2),
 (3, 1, DATE_SUB(CURDATE(), INTERVAL 3 DAY), '16:00:00', 'Control médico', 'cancelada', 3);
+
+
+-- Correcciones para las citas_historial
+-- Usuario que hizo el cambio
+ALTER TABLE citas_historial
+    ADD COLUMN usuario_id INT NULL AFTER cita_id,
+    ADD CONSTRAINT fk_historial_usuario
+        FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+        ON DELETE SET NULL;
+
+-- Enfermedad al completar la cita
+ALTER TABLE citas_historial
+    ADD COLUMN enfermedad_id INT NULL AFTER observacion,
+    ADD CONSTRAINT fk_historial_enfermedad
+        FOREIGN KEY (enfermedad_id) REFERENCES enfermedades(id)
+        ON DELETE SET NULL;
+
+-- Medicamentos de cada cita del historial
+CREATE TABLE IF NOT EXISTS citas_historial_medicamentos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    historial_id INT NOT NULL,
+    medicamento_id INT NOT NULL,
+    CONSTRAINT fk_histmed_historial
+        FOREIGN KEY (historial_id) REFERENCES citas_historial(id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_histmed_medicamento
+        FOREIGN KEY (medicamento_id) REFERENCES medicamentos(id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Localidad en el historial de citas
+ALTER TABLE citas_historial
+    ADD COLUMN localidad_id INT NULL AFTER enfermedad_id,
+    ADD CONSTRAINT fk_historial_localidad
+        FOREIGN KEY (localidad_id) REFERENCES localidades(id)
+        ON DELETE SET NULL;

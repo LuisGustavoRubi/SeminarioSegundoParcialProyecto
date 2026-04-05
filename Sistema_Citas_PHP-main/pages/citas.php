@@ -326,36 +326,33 @@ include '../includes/header.php';
 <div id="modalEnfermedad" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
     <div style="background:#fff; border-radius:8px; padding:28px; min-width:360px; max-width:95%; box-shadow:0 8px 32px rgba(0,0,0,0.2);">
         <h5 class="mb-1"><i class="bi bi-check-circle-fill text-success"></i> Completar cita</h5>
-        <p class="text-muted mb-3" style="font-size:.9rem">Seleccione la enfermedad diagnosticada para marcar la cita como completada.</p>
+        <p class="text-muted mb-3" style="font-size:.9rem">Seleccione la enfermedad diagnosticada y medicamento para marcar la cita como completada.</p>
 
         <label for="modal_enfermedad_id" class="form-label fw-semibold">Enfermedad *</label>
-        <select id="modal_enfermedad_id" class="form-select mb-4">
+        <select id="modal_enfermedad_id" class="form-select mb-3">
             <option value="">-- Seleccione una enfermedad --</option>
             <?php
-            // Rebobinar el resultado para usarlo en el modal
             $enfermedades->data_seek(0);
             while ($e = $enfermedades->fetch_assoc()): ?>
                 <option value="<?= $e['id'] ?>"><?= htmlspecialchars($e['nombre']) ?></option>
             <?php endwhile; ?>
         </select>
 
-        <!-- Seleccion de medicamentos -->
-        <label for="modal_medicamento_id" class="form-label fw-semibold mt-3">Medicamentos *</label>
-        <select id="modal_medicamento_id" class="form-select mb-4" multiple>
+        <label for="modal_medicamento_id" class="form-label fw-semibold">Medicamentos *</label>
+        <select id="modal_medicamento_id" class="form-select mb-1" multiple style="min-height:120px">
             <option disabled>Seleccione primero una localidad</option>
         </select>
-        <small class="text-muted">Se muestran medicamentos de localidad de la cita.</small>
+        <small class="text-muted d-block mb-4">Se muestran medicamentos de la localidad de la cita. Ctrl + clic para seleccionar varios.</small>
 
-        <!-- Formulario oculto para el atajo rápido (listado) -->
+        <!-- formChangeStatus incluye todo campo necesario dentro del form para que se envien al hacer submit -->
         <form id="formChangeStatus" method="POST" action="citas.php" style="display:none">
             <input type="hidden" name="action" value="changeStatus">
             <input type="hidden" name="estado" value="completada">
             <input type="hidden" name="id" id="modal_cita_id">
             <input type="hidden" name="enfermedad_id" id="modal_enfermedad_hidden">
+            <!-- Este campo debe estar en el form para que se vaya en POST -->
+            <input type="hidden" name="medicamentos" id="modal_medicamentos_hidden">
         </form>
-
-        <!-- Campo oculto para enviar medicamentos seleccionados -->
-        <input type="hidden" name="medicamentos" id="modal_medicamentos_hidden">
 
         <div class="d-flex gap-2 justify-content-end">
             <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
@@ -367,9 +364,8 @@ include '../includes/header.php';
 </div>
 
 <script>
-    // ── Variables de contexto del modal ──
-    let _modalOrigen = null; // 'listado' o 'formulario'
-    let _selectOriginal = null; // referencia al select del listado para revertir si cancela
+    let _modalOrigen   = null;
+    let _selectOriginal = null;
 
     function abrirModal(citaId, origen, selectRef = null) {
         document.getElementById('modal_cita_id').value = citaId;
@@ -378,15 +374,16 @@ include '../includes/header.php';
         _modalOrigen    = origen;
         _selectOriginal = selectRef;
 
+        // localidad_id segun origen
         let localidadId = 0;
         if (origen === 'formulario') {
-            localidadId = document.getElementById('localidad_id')?.value;
+            localidadId = document.getElementById('localidad_id')?.value ?? 0;
         } else if (origen === 'listado') {
             const row = selectRef?.closest('tr');
             localidadId = row?.dataset.localidadId ?? 0;
         }
 
-        if (localidadId > 0) {
+        if (parseInt(localidadId) > 0) {
             cargarMedicamentosPorLocalidad(localidadId);
         } else {
             document.getElementById('modal_medicamento_id').innerHTML =
@@ -396,14 +393,13 @@ include '../includes/header.php';
         document.getElementById('modalEnfermedad').style.display = 'flex';
     }
 
-    // Medicamentos por locacion
     function cargarMedicamentosPorLocalidad(localidadId) {
         fetch(`citas.php?action=getMedicamentos&localidad_id=${localidadId}`)
             .then(r => r.json())
             .then(meds => {
                 const select = document.getElementById('modal_medicamento_id');
-                if (meds.length === 0) {
-                    select.innerHTML = '<option disabled>Sin medicamentos disponibles en localidad</option>';
+                if (!meds.length) {
+                    select.innerHTML = '<option disabled>Sin medicamentos disponibles en esta localidad</option>';
                 } else {
                     select.innerHTML = meds.map(m =>
                         `<option value="${m.id}">${m.nombre} (Stock: ${m.stock})</option>`
@@ -417,67 +413,70 @@ include '../includes/header.php';
     }
 
     function cerrarModal() {
-        // Si vino del listado, revertir el select al estado anterior
         if (_selectOriginal) {
             _selectOriginal.value = _selectOriginal.dataset.estadoActual;
         }
-        // Si vino del formulario, revertir el select de estado a pendiente
         if (_modalOrigen === 'formulario') {
             const sel = document.getElementById('estado');
             if (sel) sel.value = 'pendiente';
         }
-        // quitar meds seleccionados
-        document.getElementById('modal_medicamento_id').value = '';
         document.getElementById('modalEnfermedad').style.display = 'none';
     }
 
     function confirmarEnfermedad() {
-        const enfermedadId = document.getElementById('modal_enfermedad_id').value;
-        const medsSelect = document.getElementById('modal_medicamento_id');
-        const selectedMeds = Array.from(medsSelect.selectedOptions).map(opt => opt.value);
+        const enfermedadId  = document.getElementById('modal_enfermedad_id').value;
+        const medsSelect    = document.getElementById('modal_medicamento_id');
+        const selectedMeds  = Array.from(medsSelect.selectedOptions).map(opt => opt.value);
 
         if (!enfermedadId) {
             alert('Por favor seleccione una enfermedad.');
             return;
         }
-
         if (selectedMeds.length === 0) {
-            alert('Por favor seleccione minimo un medicamento.');
+            alert('Por favor seleccione al menos un medicamento.');
             return;
         }
 
         if (_modalOrigen === 'listado') {
-            // Enviar el formulario oculto de changeStatus
-            document.getElementById('modal_enfermedad_hidden').value = enfermedadId;
-            document.getElementById('modal_medicamentos_hidden').value = selectedMeds.join(',');
+            // Llenar los campos ocultos del form y hacer submit
+            document.getElementById('modal_enfermedad_hidden').value   = enfermedadId;
+            document.getElementById('modal_medicamentos_hidden').value  = selectedMeds.join(',');
             document.getElementById('formChangeStatus').submit();
+
         } else if (_modalOrigen === 'formulario') {
-            // Llenar el campo oculto del formulario principal y dejarlo continuar
+            // Inyectar en el formCita principal y hacer submit
             document.getElementById('enfermedad_id_form').value = enfermedadId;
-            document.getElementById('formCita').insertAdjacentHTML('beforeend', `<input type="hidden" name="medicamentos" value="${selectedMeds.join(',')}">`);
+
+            // Evitar duplicar el campo si el usuario abre el modal mas de una vez
+            const existing = document.querySelector('#formCita input[name="medicamentos"]');
+            if (existing) existing.remove();
+            document.getElementById('formCita').insertAdjacentHTML(
+                'beforeend',
+                `<input type="hidden" name="medicamentos" value="${selectedMeds.join(',')}">`
+            );
+
             document.getElementById('modalEnfermedad').style.display = 'none';
             document.getElementById('formCita').submit();
         }
     }
 
-    // Cerrar modal al hacer clic fuera
+    // Cerrar al clic fuera del modal
     document.getElementById('modalEnfermedad').addEventListener('click', function(e) {
         if (e.target === this) cerrarModal();
     });
 
-    // ── Atajo rápido del listado ──
+    // Atajo rapido del listado
     function manejarCambioEstado(selectEl, citaId) {
         const nuevoEstado = selectEl.value;
         if (nuevoEstado === 'completada') {
             abrirModal(citaId, 'listado', selectEl);
         } else {
-            // Para otros estados, enviar directo
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = 'citas.php';
             form.innerHTML = `
                 <input type="hidden" name="action" value="changeStatus">
-                <input type="hidden" name="id" value="${citaId}">
+                <input type="hidden" name="id"     value="${citaId}">
                 <input type="hidden" name="estado" value="${nuevoEstado}">
             `;
             document.body.appendChild(form);
@@ -485,14 +484,14 @@ include '../includes/header.php';
         }
     }
 
-    // ── Formulario de edición ──
+    // Formulario de edición 
     function manejarCambioEstadoFormulario(nuevoEstado, citaId) {
         if (nuevoEstado === 'completada') {
             abrirModal(citaId, 'formulario');
         }
     }
 
-    // ── Validación del formulario principal ──
+    // Hora 
     function actualizarHora() {
         const h = document.getElementById('hora_h').value;
         const m = document.getElementById('hora_m').value;
@@ -500,16 +499,18 @@ include '../includes/header.php';
     }
     actualizarHora();
 
+    // Validación del formulario principal
     function validarFormularioCita() {
         const paciente = document.getElementById('paciente_id')?.value;
-        const medico   = document.getElementById('medico_id')?.value;
-        const fecha    = document.getElementById('fecha')?.value.trim();
-        const hora     = document.getElementById('hora')?.value.trim();
-        const motivo   = document.getElementById('motivo')?.value.trim();
-        const estado   = document.getElementById('estado')?.value;
+        const medico = document.getElementById('medico_id')?.value;
+        const fecha = document.getElementById('fecha')?.value.trim();
+        const hora = document.getElementById('hora')?.value.trim();
+        const motivo = document.getElementById('motivo')?.value.trim();
+        const estado = document.getElementById('estado')?.value;
 
-        // Si se seleccionó completada y aún no pasó por el modal, abrirlo
-        if (estado === 'completada' && (!document.getElementById('enfermedad_id_form').value || document.getElementById('enfermedad_id_form').value == '0')) {
+        if (estado === 'completada' &&
+            (!document.getElementById('enfermedad_id_form').value ||
+              document.getElementById('enfermedad_id_form').value == '0')) {
             const citaId = document.querySelector('input[name="id"]')?.value;
             abrirModal(citaId, 'formulario');
             return false;
@@ -517,10 +518,10 @@ include '../includes/header.php';
 
         const faltantes = [];
         if (!paciente) faltantes.push('Paciente');
-        if (!medico)   faltantes.push('Médico');
-        if (!fecha)    faltantes.push('Fecha');
-        if (!hora)     faltantes.push('Hora');
-        if (!motivo)   faltantes.push('Motivo de consulta');
+        if (!medico) faltantes.push('Médico');
+        if (!fecha) faltantes.push('Fecha');
+        if (!hora) faltantes.push('Hora');
+        if (!motivo) faltantes.push('Motivo de consulta');
 
         if (faltantes.length > 0) {
             Swal.fire({
@@ -532,11 +533,8 @@ include '../includes/header.php';
         }
 
         if (motivo.length < 10) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Motivo muy corto',
-                html: 'El motivo de consulta debe tener al menos <strong>10 caracteres</strong>.'
-            });
+            Swal.fire({ icon: 'error', title: 'Motivo muy corto',
+                html: 'El motivo debe tener al menos <strong>10 caracteres</strong>.' });
             return false;
         }
 
@@ -553,7 +551,8 @@ include '../includes/header.php';
         if (fecha === hoyStr) {
             const ahoraStr = String(hoy.getHours()).padStart(2, '0') + ':' + String(hoy.getMinutes()).padStart(2, '0');
             if (hora < ahoraStr) {
-                Swal.fire({ icon: 'error', title: 'Hora inválida', html: 'Para citas de hoy, la hora debe ser posterior a la hora actual.' });
+                Swal.fire({ icon: 'error', title: 'Hora inválida',
+                    html: 'Para citas de hoy, la hora debe ser posterior a la hora actual.' });
                 return false;
             }
         }

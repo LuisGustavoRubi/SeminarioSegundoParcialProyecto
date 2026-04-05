@@ -26,7 +26,7 @@ include '../includes/headerLogin.php';
                         <div class="row g-0">
                             <div class="col-lg-6">
                                 <div class="login-hero d-flex flex-column justify-content-between p-4 p-md-5">
-                                    <div class="login-brand">
+                                    <div class="login-brand text-center">
                                         <i class="bi bi-hospital"></i> Centro de Salud
                                         <small>Sistema de Citas Medicas</small>
                                     </div>
