@@ -51,15 +51,6 @@ CREATE TABLE IF NOT EXISTS localidad_medicamentos (
     FOREIGN KEY (medicamento_id) REFERENCES medicamentos(id) ON DELETE CASCADE
 )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS cita_medicamentos (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    cita_id INT NOT NULL,
-    medicamento_id INT NOT NULL,
-    cantidad INT DEFAULT 1,
-
-    FOREIGN KEY (cita_id) REFERENCES citas(id) ON DELETE CASCADE,
-    FOREIGN KEY (medicamento_id) REFERENCES medicamentos(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS citas (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -84,6 +75,16 @@ CREATE TABLE IF NOT EXISTS citas (
     CONSTRAINT fk_citas_localidad
         FOREIGN KEY (localidad_id) REFERENCES localidades(id)
         ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS cita_medicamentos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cita_id INT NOT NULL,
+    medicamento_id INT NOT NULL,
+    cantidad INT DEFAULT 1,
+
+    FOREIGN KEY (cita_id) REFERENCES citas(id) ON DELETE CASCADE,
+    FOREIGN KEY (medicamento_id) REFERENCES medicamentos(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS citas_historial (

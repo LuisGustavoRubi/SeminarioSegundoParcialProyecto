@@ -2,15 +2,15 @@
 require_once '../includes/config.php';
 require_once '../includes/auth.php';
 requireLogin();
-require_once '../controllers/CitasController.php';
+require_once '../controllers/citasController.php';
 
 $controller = new CitasController($conn);
 $controller->handleRequest();
 
-$cita = null;
+$cita              = null;
 $mostrar_formulario = false;
 
-if (isset($_GET['action']) && $_GET['action'] == 'edit' && isset($_GET['id'])) {
+if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['id'])) {
     $cita = $controller->obtenerPorId($_GET['id']);
     if ($cita) {
         $mostrar_formulario = true;
@@ -21,18 +21,18 @@ if (isset($_GET['action']) && $_GET['action'] == 'edit' && isset($_GET['id'])) {
     }
 }
 
-if (isset($_GET['action']) && $_GET['action'] == 'new') {
+if (isset($_GET['action']) && $_GET['action'] === 'new') {
     $mostrar_formulario = true;
 }
 
 if ($mostrar_formulario) {
-    $pacientes    = $controller->obtenerPacientes();
-    $medicos      = $controller->obtenerMedicos();
-    $localidades  = $controller->obtenerLocalidades();
-    $enfermedades = $controller->obtenerEnfermedades();
+    $pacientes   = $controller->obtenerPacientes();
+    $medicos     = $controller->obtenerMedicos();
+    $localidades = $controller->obtenerLocalidades();
+    $enfermedades = $controller->obtenerEnfermedades(); // array PHP — no necesita data_seek
 } else {
     $citas        = $controller->obtenerTodas();
-    $enfermedades = $controller->obtenerEnfermedades();
+    $enfermedades = $controller->obtenerEnfermedades(); // array PHP — reutilizable sin workaround
 }
 
 $form_data = null;
@@ -42,9 +42,9 @@ if (isset($_SESSION['form_data'])) {
 }
 
 $current_page = 'citas';
-$page_title = $mostrar_formulario
-    ? ($cita ? "Editar Cita" : "Nueva Cita")
-    : "Gestión de Citas";
+$page_title   = $mostrar_formulario
+    ? ($cita ? 'Editar Cita' : 'Nueva Cita')
+    : 'Gestión de Citas';
 
 include '../includes/header.php';
 ?>
@@ -58,7 +58,7 @@ include '../includes/header.php';
                     <?php echo $cita ? 'Editar' : 'Agendar'; ?> Cita
                 </div>
                 <div class="card-body">
-                    <form method="POST" id="formCita" onsubmit="return validarFormularioCita()" novalidate>
+                    <form method="POST" id="formCita" onsubmit="return CitasUI.validarFormulario()" novalidate>
                         <input type="hidden" name="action" value="<?php echo $cita ? 'update' : 'create'; ?>">
                         <?php if ($cita): ?>
                             <input type="hidden" name="id" value="<?php echo $cita['id']; ?>">
@@ -72,10 +72,11 @@ include '../includes/header.php';
                                     <option value="">Seleccionar paciente...</option>
                                     <?php
                                     $selectedPaciente = $form_data['paciente_id'] ?? ($cita['paciente_id'] ?? '');
-                                    while ($p = $pacientes->fetch_assoc()): ?>
-                                        <option value="<?php echo $p['id']; ?>"
-                                            <?php echo ($selectedPaciente == $p['id']) ? 'selected' : ''; ?>>
-                                            <?php echo htmlspecialchars($p['nombre'] . ' ' . $p['apellido'] . ' - ' . $p['cedula'], ENT_QUOTES, 'UTF-8'); ?>
+                                    // $paciente — nombre descriptivo en lugar de $p
+                                    while ($paciente = $pacientes->fetch_assoc()): ?>
+                                        <option value="<?php echo $paciente['id']; ?>"
+                                            <?php echo ($selectedPaciente == $paciente['id']) ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($paciente['nombre'] . ' ' . $paciente['apellido'] . ' - ' . $paciente['cedula'], ENT_QUOTES, 'UTF-8'); ?>
                                         </option>
                                     <?php endwhile; ?>
                                 </select>
@@ -83,7 +84,7 @@ include '../includes/header.php';
                             <div class="col-md-4">
                                 <label for="medico_id" class="form-label">Médico *</label>
                                 <?php
-                                $esEmpleado = ($_SESSION['rol'] ?? '') === 'empleado';
+                                $esEmpleado    = ($_SESSION['rol'] ?? '') === 'empleado';
                                 $selectedMedico = $form_data['medico_id'] ?? ($cita['medico_id'] ?? ($esEmpleado ? intval($_SESSION['medico_id'] ?? 0) : ''));
                                 ?>
                                 <?php if ($esEmpleado): ?>
@@ -93,10 +94,12 @@ include '../includes/header.php';
                                     <?php if (!$esEmpleado && !$citaBloqueada): ?>name="medico_id" required<?php endif; ?>
                                     <?php echo ($esEmpleado || $citaBloqueada) ? 'disabled' : ''; ?>>
                                     <option value="">Seleccionar médico...</option>
-                                    <?php while ($m = $medicos->fetch_assoc()): ?>
-                                        <option value="<?php echo $m['id']; ?>"
-                                            <?php echo ($selectedMedico == $m['id']) ? 'selected' : ''; ?>>
-                                            Dr. <?php echo htmlspecialchars($m['nombre'] . ' ' . $m['apellido'] . ' - ' . $m['especialidad'], ENT_QUOTES, 'UTF-8'); ?>
+                                    <?php
+                                    // $medico — nombre descriptivo en lugar de $m
+                                    while ($medico = $medicos->fetch_assoc()): ?>
+                                        <option value="<?php echo $medico['id']; ?>"
+                                            <?php echo ($selectedMedico == $medico['id']) ? 'selected' : ''; ?>>
+                                            Dr. <?php echo htmlspecialchars($medico['nombre'] . ' ' . $medico['apellido'] . ' - ' . $medico['especialidad'], ENT_QUOTES, 'UTF-8'); ?>
                                         </option>
                                     <?php endwhile; ?>
                                 </select>
@@ -108,10 +111,11 @@ include '../includes/header.php';
                                     <option value="">Seleccionar localidad...</option>
                                     <?php
                                     $selectedLocalidad = $form_data['localidad_id'] ?? ($cita['localidad_id'] ?? '');
-                                    while ($loc = $localidades->fetch_assoc()): ?>
-                                        <option value="<?php echo $loc['id']; ?>"
-                                            <?php echo ($selectedLocalidad == $loc['id']) ? 'selected' : ''; ?>>
-                                            <?php echo htmlspecialchars($loc['nombre'], ENT_QUOTES, 'UTF-8'); ?>
+                                    // $localidad — nombre descriptivo en lugar de $loc
+                                    while ($localidad = $localidades->fetch_assoc()): ?>
+                                        <option value="<?php echo $localidad['id']; ?>"
+                                            <?php echo ($selectedLocalidad == $localidad['id']) ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($localidad['nombre'], ENT_QUOTES, 'UTF-8'); ?>
                                         </option>
                                     <?php endwhile; ?>
                                 </select>
@@ -130,13 +134,13 @@ include '../includes/header.php';
                                 <label class="form-label">Hora *</label>
                                 <?php
                                 $selectedHora = substr($form_data['hora'] ?? ($cita['hora'] ?? ''), 0, 5);
-                                $selectedH = $selectedHora ? substr($selectedHora, 0, 2) : '07';
-                                $selectedM = $selectedHora ? substr($selectedHora, 3, 2) : '00';
+                                $selectedH    = $selectedHora ? substr($selectedHora, 0, 2) : '07';
+                                $selectedM    = $selectedHora ? substr($selectedHora, 3, 2) : '00';
                                 ?>
                                 <div class="input-group">
                                     <select class="form-select" id="hora_h"
                                         <?php echo $citaBloqueada ? 'disabled' : ''; ?>
-                                        onchange="actualizarHora()">
+                                        onchange="CitasUI.actualizarHora()">
                                         <?php for ($h = 0; $h <= 23; $h++): $hStr = sprintf('%02d', $h); ?>
                                             <option value="<?= $hStr ?>" <?= $selectedH === $hStr ? 'selected' : '' ?>><?= $hStr ?></option>
                                         <?php endfor; ?>
@@ -144,7 +148,7 @@ include '../includes/header.php';
                                     <span class="input-group-text fw-bold">:</span>
                                     <select class="form-select" id="hora_m"
                                         <?php echo $citaBloqueada ? 'disabled' : ''; ?>
-                                        onchange="actualizarHora()">
+                                        onchange="CitasUI.actualizarHora()">
                                         <option value="00" <?= $selectedM === '00' ? 'selected' : '' ?>>00</option>
                                         <option value="30" <?= $selectedM === '30' ? 'selected' : '' ?>>30</option>
                                     </select>
@@ -189,10 +193,10 @@ include '../includes/header.php';
                                     <label for="estado" class="form-label">Estado *</label>
                                     <?php $selectedEstado = $form_data['estado'] ?? $cita['estado']; ?>
                                     <select class="form-select" id="estado" name="estado" required
-                                        onchange="manejarCambioEstadoFormulario(this.value, <?php echo $cita['id']; ?>)">
-                                        <option value="pendiente"  <?php echo $selectedEstado == 'pendiente'  ? 'selected' : ''; ?>>Pendiente</option>
-                                        <option value="completada" <?php echo $selectedEstado == 'completada' ? 'selected' : ''; ?>>Completada</option>
-                                        <option value="cancelada"  <?php echo $selectedEstado == 'cancelada'  ? 'selected' : ''; ?>>Cancelada</option>
+                                        onchange="CitasUI.onCambioEstadoFormulario(this.value, <?php echo $cita['id']; ?>)">
+                                        <option value="pendiente"  <?php echo $selectedEstado === 'pendiente'  ? 'selected' : ''; ?>>Pendiente</option>
+                                        <option value="completada" <?php echo $selectedEstado === 'completada' ? 'selected' : ''; ?>>Completada</option>
+                                        <option value="cancelada"  <?php echo $selectedEstado === 'cancelada'  ? 'selected' : ''; ?>>Cancelada</option>
                                     </select>
                                 </div>
                                 <div class="mb-3">
@@ -203,7 +207,6 @@ include '../includes/header.php';
                             <?php endif; ?>
                         <?php endif; ?>
 
-                        <!-- Campo oculto para enfermedad (se llena desde el modal) -->
                         <input type="hidden" name="enfermedad_id" id="enfermedad_id_form" value="0">
 
                         <hr class="my-4">
@@ -264,20 +267,22 @@ include '../includes/header.php';
                             </tr>
                         </thead>
                         <tbody>
-                            <?php while ($c = $citas->fetch_assoc()): ?>
-                                <tr data-localidad-id="<?php echo $c['localidad_id']; ?>">
-                                    <td><strong><?php echo date('d/m/Y', strtotime($c['fecha'])); ?></strong></td>
-                                    <td><?php echo date('H:i', strtotime($c['hora'])); ?></td>
-                                    <td><?php echo htmlspecialchars($c['paciente_nombre'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                    <td>Dr. <?php echo htmlspecialchars($c['medico_nombre'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                    <td><span class="badge bg-info text-dark"><?php echo htmlspecialchars($c['especialidad'], ENT_QUOTES, 'UTF-8'); ?></span></td>
-                                    <td><?php echo htmlspecialchars($c['localidad'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                    <td><?php echo htmlspecialchars(substr($c['motivo'], 0, 40), ENT_QUOTES, 'UTF-8'); ?><?php echo strlen($c['motivo']) > 40 ? '...' : ''; ?></td>
+                            <?php
+                            // $cita — nombre descriptivo en lugar de $c
+                            while ($cita = $citas->fetch_assoc()): ?>
+                                <tr data-localidad-id="<?php echo $cita['localidad_id']; ?>">
+                                    <td><strong><?php echo date('d/m/Y', strtotime($cita['fecha'])); ?></strong></td>
+                                    <td><?php echo date('H:i', strtotime($cita['hora'])); ?></td>
+                                    <td><?php echo htmlspecialchars($cita['paciente_nombre'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td>Dr. <?php echo htmlspecialchars($cita['medico_nombre'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><span class="badge bg-info text-dark"><?php echo htmlspecialchars($cita['especialidad'], ENT_QUOTES, 'UTF-8'); ?></span></td>
+                                    <td><?php echo htmlspecialchars($cita['localidad'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars(substr($cita['motivo'], 0, 40), ENT_QUOTES, 'UTF-8'); ?><?php echo strlen($cita['motivo']) > 40 ? '...' : ''; ?></td>
                                     <td>
-                                        <?php if (in_array($c['estado'], ['cancelada', 'completada'])): ?>
+                                        <?php if (in_array($cita['estado'], ['cancelada', 'completada'])): ?>
                                             <?php
-                                            $labelFinal = $c['estado'] === 'cancelada' ? 'Cancelada' : 'Completada';
-                                            $colorFinal = $c['estado'] === 'cancelada' ? 'danger' : 'success';
+                                            $labelFinal = $cita['estado'] === 'cancelada' ? 'Cancelada' : 'Completada';
+                                            $colorFinal = $cita['estado'] === 'cancelada' ? 'danger'    : 'success';
                                             ?>
                                             <select class="form-select form-select-sm border-<?php echo $colorFinal; ?>" disabled
                                                 style="width:auto;min-width:120px;opacity:.65;cursor:not-allowed">
@@ -285,22 +290,22 @@ include '../includes/header.php';
                                             </select>
                                         <?php else: ?>
                                             <select class="form-select form-select-sm border-warning"
-                                                onchange="manejarCambioEstado(this, <?php echo $c['id']; ?>)"
+                                                onchange="CitasUI.onCambioEstadoListado(this, <?php echo $cita['id']; ?>)"
                                                 style="width:auto;min-width:120px"
-                                                data-estado-actual="<?php echo $c['estado']; ?>">
-                                                <option value="pendiente"  <?php echo $c['estado'] == 'pendiente'  ? 'selected' : ''; ?>>Pendiente</option>
-                                                <option value="completada" <?php echo $c['estado'] == 'completada' ? 'selected' : ''; ?>>Completada</option>
+                                                data-estado-actual="<?php echo $cita['estado']; ?>">
+                                                <option value="pendiente"  <?php echo $cita['estado'] === 'pendiente'  ? 'selected' : ''; ?>>Pendiente</option>
+                                                <option value="completada" <?php echo $cita['estado'] === 'completada' ? 'selected' : ''; ?>>Completada</option>
                                                 <option value="cancelada">Cancelada</option>
                                             </select>
                                         <?php endif; ?>
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm" role="group">
-                                            <a href="?action=edit&id=<?php echo $c['id']; ?>" class="btn btn-outline-primary" title="Ver detalle">
+                                            <a href="?action=edit&id=<?php echo $cita['id']; ?>" class="btn btn-outline-primary" title="Ver detalle">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
                                             <button type="button" class="btn btn-outline-danger"
-                                                onclick="confirmarEliminacion(<?php echo $c['id']; ?>, 'Cita del <?php echo date('d/m/Y', strtotime($c['fecha'])); ?>', 'la cita')"
+                                                onclick="confirmarEliminacion(<?php echo $cita['id']; ?>, 'Cita del <?php echo date('d/m/Y', strtotime($cita['fecha'])); ?>', 'la cita')"
                                                 title="Eliminar">
                                                 <i class="bi bi-trash"></i>
                                             </button>
@@ -334,10 +339,11 @@ include '../includes/header.php';
         <select id="modal_enfermedad_id" class="form-select mb-3">
             <option value="">-- Seleccione una enfermedad --</option>
             <?php
-            $enfermedades->data_seek(0);
-            while ($e = $enfermedades->fetch_assoc()): ?>
-                <option value="<?= $e['id'] ?>"><?= htmlspecialchars($e['nombre']) ?></option>
-            <?php endwhile; ?>
+            // foreach sobre array PHP — no necesita data_seek(0)
+            // $enfermedad — nombre descriptivo en lugar de $e
+            foreach ($enfermedades as $enfermedad): ?>
+                <option value="<?= $enfermedad['id'] ?>"><?= htmlspecialchars($enfermedad['nombre']) ?></option>
+            <?php endforeach; ?>
         </select>
 
         <label for="modal_medicamento_id" class="form-label fw-semibold">Medicamentos *</label>
@@ -346,19 +352,17 @@ include '../includes/header.php';
         </select>
         <small class="text-muted d-block mb-4">Se muestran medicamentos de la localidad de la cita. Ctrl + clic para seleccionar varios.</small>
 
-        <!-- formChangeStatus incluye todo campo necesario dentro del form para que se envien al hacer submit -->
         <form id="formChangeStatus" method="POST" action="citas.php" style="display:none">
-            <input type="hidden" name="action" value="changeStatus">
-            <input type="hidden" name="estado" value="completada">
-            <input type="hidden" name="id" id="modal_cita_id">
-            <input type="hidden" name="enfermedad_id" id="modal_enfermedad_hidden">
-            <!-- Este campo debe estar en el form para que se vaya en POST -->
+            <input type="hidden" name="action"       value="changeStatus">
+            <input type="hidden" name="estado"       value="completada">
+            <input type="hidden" name="id"           id="modal_cita_id">
+            <input type="hidden" name="enfermedad_id"id="modal_enfermedad_hidden">
             <input type="hidden" name="medicamentos" id="modal_medicamentos_hidden">
         </form>
 
         <div class="d-flex gap-2 justify-content-end">
-            <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
-            <button type="button" class="btn btn-success" onclick="confirmarEnfermedad()">
+            <button type="button" class="btn btn-secondary" onclick="CitasUI.cerrarModal()">Cancelar</button>
+            <button type="button" class="btn btn-success"   onclick="CitasUI.submitCompletarCita()">
                 <i class="bi bi-check-lg"></i> Completar cita
             </button>
         </div>
@@ -366,27 +370,34 @@ include '../includes/header.php';
 </div>
 
 <script>
-    let _modalOrigen   = null;
-    let _selectOriginal = null;
+// ── CitasUI — IIFE: todo el estado del modal queda privado, fuera del scope global ──
+const CitasUI = (() => {
 
-    function abrirModal(citaId, origen, selectRef = null) {
-        document.getElementById('modal_cita_id').value = citaId;
+    // Estado privado — reemplaza las variables globales _modalOrigen y _selectOriginal
+    let modalCtx = {
+        citaId   : null,
+        origen   : null,   // 'listado' | 'formulario'
+        selectRef: null,
+    };
+
+    // abrirModalCompletar — antes: abrirModal(citaId, origen, s)
+    function abrirModalCompletar(citaId, origen, selectRef = null) {
+        document.getElementById('modal_cita_id').value       = citaId;
         document.getElementById('modal_enfermedad_id').value = '';
         document.getElementById('modal_medicamento_id').innerHTML = '<option disabled>Cargando...</option>';
-        _modalOrigen    = origen;
-        _selectOriginal = selectRef;
 
-        // localidad_id segun origen
+        modalCtx = { citaId, origen, selectRef };
+
         let localidadId = 0;
         if (origen === 'formulario') {
             localidadId = document.getElementById('localidad_id')?.value ?? 0;
         } else if (origen === 'listado') {
-            const row = selectRef?.closest('tr');
-            localidadId = row?.dataset.localidadId ?? 0;
+            const fila  = selectRef?.closest('tr');
+            localidadId = fila?.dataset.localidadId ?? 0;
         }
 
         if (parseInt(localidadId) > 0) {
-            cargarMedicamentosPorLocalidad(localidadId);
+            fetchMedicamentosPorLocalidad(localidadId);
         } else {
             document.getElementById('modal_medicamento_id').innerHTML =
                 '<option disabled>No se pudo determinar la localidad</option>';
@@ -395,66 +406,68 @@ include '../includes/header.php';
         document.getElementById('modalEnfermedad').style.display = 'flex';
     }
 
-    function cargarMedicamentosPorLocalidad(localidadId) {
-        fetch(`citas.php?action=getMedicamentos&localidad_id=${localidadId}`)
-            .then(r => r.json())
-            .then(meds => {
-                const select = document.getElementById('modal_medicamento_id');
-                if (!meds.length) {
-                    select.innerHTML = '<option disabled>Sin medicamentos disponibles en esta localidad</option>';
-                } else {
-                    select.innerHTML = meds.map(m =>
-                        `<option value="${m.id}">${m.nombre} (Stock: ${m.stock})</option>`
-                    ).join('');
-                }
-            })
-            .catch(() => {
-                document.getElementById('modal_medicamento_id').innerHTML =
-                    '<option disabled>Error al cargar medicamentos</option>';
-            });
+    // fetchMedicamentosPorLocalidad — antes: cargarMedicamentosPorLocalidad(id)
+    async function fetchMedicamentosPorLocalidad(localidadId) {
+        try {
+            const respuesta   = await fetch(`citas.php?action=getMedicamentos&localidad_id=${localidadId}`);
+            const medicamentos = await respuesta.json();
+            const select      = document.getElementById('modal_medicamento_id');
+
+            if (!medicamentos.length) {
+                select.innerHTML = '<option disabled>Sin medicamentos disponibles en esta localidad</option>';
+            } else {
+                select.innerHTML = medicamentos.map(med =>
+                    `<option value="${med.id}">${med.nombre} (Stock: ${med.stock})</option>`
+                ).join('');
+            }
+        } catch {
+            document.getElementById('modal_medicamento_id').innerHTML =
+                '<option disabled>Error al cargar medicamentos</option>';
+        }
     }
 
     function cerrarModal() {
-        if (_selectOriginal) {
-            _selectOriginal.value = _selectOriginal.dataset.estadoActual;
+        // Restaura el select del listado a su estado anterior si el usuario cancela
+        if (modalCtx.selectRef) {
+            modalCtx.selectRef.value = modalCtx.selectRef.dataset.estadoActual;
         }
-        if (_modalOrigen === 'formulario') {
-            const sel = document.getElementById('estado');
-            if (sel) sel.value = 'pendiente';
+        if (modalCtx.origen === 'formulario') {
+            const selEstado = document.getElementById('estado');
+            if (selEstado) selEstado.value = 'pendiente';
         }
         document.getElementById('modalEnfermedad').style.display = 'none';
     }
 
-    function confirmarEnfermedad() {
-        const enfermedadId  = document.getElementById('modal_enfermedad_id').value;
-        const medsSelect    = document.getElementById('modal_medicamento_id');
-        const selectedMeds  = Array.from(medsSelect.selectedOptions).map(opt => opt.value);
+    // submitCompletarCita — antes: confirmarEnfermedad()
+    function submitCompletarCita() {
+        const enfermedadId    = document.getElementById('modal_enfermedad_id').value;
+        const selectMeds      = document.getElementById('modal_medicamento_id');
+        const medicamentosIds = Array.from(selectMeds.selectedOptions).map(opt => opt.value);
 
         if (!enfermedadId) {
             alert('Por favor seleccione una enfermedad.');
             return;
         }
-        if (selectedMeds.length === 0) {
+        if (medicamentosIds.length === 0) {
             alert('Por favor seleccione al menos un medicamento.');
             return;
         }
 
-        if (_modalOrigen === 'listado') {
-            // Llenar los campos ocultos del form y hacer submit
-            document.getElementById('modal_enfermedad_hidden').value   = enfermedadId;
-            document.getElementById('modal_medicamentos_hidden').value  = selectedMeds.join(',');
+        if (modalCtx.origen === 'listado') {
+            document.getElementById('modal_enfermedad_hidden').value  = enfermedadId;
+            document.getElementById('modal_medicamentos_hidden').value = medicamentosIds.join(',');
             document.getElementById('formChangeStatus').submit();
 
-        } else if (_modalOrigen === 'formulario') {
-            // Inyectar en el formCita principal y hacer submit
+        } else if (modalCtx.origen === 'formulario') {
             document.getElementById('enfermedad_id_form').value = enfermedadId;
 
-            // Evitar duplicar el campo si el usuario abre el modal mas de una vez
-            const existing = document.querySelector('#formCita input[name="medicamentos"]');
-            if (existing) existing.remove();
+            // Evitar duplicar el campo si el modal se abrió más de una vez
+            const campoExistente = document.querySelector('#formCita input[name="medicamentos"]');
+            if (campoExistente) campoExistente.remove();
+
             document.getElementById('formCita').insertAdjacentHTML(
                 'beforeend',
-                `<input type="hidden" name="medicamentos" value="${selectedMeds.join(',')}">`
+                `<input type="hidden" name="medicamentos" value="${medicamentosIds.join(',')}">`
             );
 
             document.getElementById('modalEnfermedad').style.display = 'none';
@@ -462,16 +475,11 @@ include '../includes/header.php';
         }
     }
 
-    // Cerrar al clic fuera del modal
-    document.getElementById('modalEnfermedad').addEventListener('click', function(e) {
-        if (e.target === this) cerrarModal();
-    });
-
-    // Atajo rapido del listado
-    function manejarCambioEstado(selectEl, citaId) {
+    // onCambioEstadoListado — antes: manejarCambioEstado(sel, id)
+    function onCambioEstadoListado(selectEl, citaId) {
         const nuevoEstado = selectEl.value;
         if (nuevoEstado === 'completada') {
-            abrirModal(citaId, 'listado', selectEl);
+            abrirModalCompletar(citaId, 'listado', selectEl);
         } else {
             const form = document.createElement('form');
             form.method = 'POST';
@@ -486,50 +494,47 @@ include '../includes/header.php';
         }
     }
 
-    // Formulario de edición 
-    function manejarCambioEstadoFormulario(nuevoEstado, citaId) {
+    // onCambioEstadoFormulario — antes: manejarCambioEstadoFormulario(e, id)
+    function onCambioEstadoFormulario(nuevoEstado, citaId) {
         if (nuevoEstado === 'completada') {
-            abrirModal(citaId, 'formulario');
+            abrirModalCompletar(citaId, 'formulario');
         }
     }
 
-    // Hora 
     function actualizarHora() {
         const h = document.getElementById('hora_h').value;
         const m = document.getElementById('hora_m').value;
         document.getElementById('hora').value = h + ':' + m;
     }
-    actualizarHora();
 
-    // Validación del formulario principal
-    function validarFormularioCita() {
+    function validarFormulario() {
         const paciente = document.getElementById('paciente_id')?.value;
-        const medico = document.getElementById('medico_id')?.value;
-        const fecha = document.getElementById('fecha')?.value.trim();
-        const hora = document.getElementById('hora')?.value.trim();
-        const motivo = document.getElementById('motivo')?.value.trim();
-        const estado = document.getElementById('estado')?.value;
+        const medico   = document.getElementById('medico_id')?.value;
+        const fecha    = document.getElementById('fecha')?.value.trim();
+        const hora     = document.getElementById('hora')?.value.trim();
+        const motivo   = document.getElementById('motivo')?.value.trim();
+        const estado   = document.getElementById('estado')?.value;
 
         if (estado === 'completada' &&
             (!document.getElementById('enfermedad_id_form').value ||
               document.getElementById('enfermedad_id_form').value == '0')) {
             const citaId = document.querySelector('input[name="id"]')?.value;
-            abrirModal(citaId, 'formulario');
+            abrirModalCompletar(citaId, 'formulario');
             return false;
         }
 
         const faltantes = [];
         if (!paciente) faltantes.push('Paciente');
-        if (!medico) faltantes.push('Médico');
-        if (!fecha) faltantes.push('Fecha');
-        if (!hora) faltantes.push('Hora');
-        if (!motivo) faltantes.push('Motivo de consulta');
+        if (!medico)   faltantes.push('Médico');
+        if (!fecha)    faltantes.push('Fecha');
+        if (!hora)     faltantes.push('Hora');
+        if (!motivo)   faltantes.push('Motivo de consulta');
 
         if (faltantes.length > 0) {
             Swal.fire({
-                icon: 'error',
+                icon : 'error',
                 title: 'Campos obligatorios incompletos',
-                html: 'Por favor complete los siguientes campos:<br><strong>' + faltantes.join(', ') + '</strong>'
+                html : 'Por favor complete los siguientes campos:<br><strong>' + faltantes.join(', ') + '</strong>'
             });
             return false;
         }
@@ -546,12 +551,14 @@ include '../includes/header.php';
             String(hoy.getDate()).padStart(2, '0');
 
         if (fecha < hoyStr) {
-            Swal.fire({ icon: 'error', title: 'Fecha inválida', html: 'No se pueden agendar citas en fechas pasadas.' });
+            Swal.fire({ icon: 'error', title: 'Fecha inválida',
+                html: 'No se pueden agendar citas en fechas pasadas.' });
             return false;
         }
 
         if (fecha === hoyStr) {
-            const ahoraStr = String(hoy.getHours()).padStart(2, '0') + ':' + String(hoy.getMinutes()).padStart(2, '0');
+            const ahoraStr = String(hoy.getHours()).padStart(2, '0') + ':' +
+                             String(hoy.getMinutes()).padStart(2, '0');
             if (hora < ahoraStr) {
                 Swal.fire({ icon: 'error', title: 'Hora inválida',
                     html: 'Para citas de hoy, la hora debe ser posterior a la hora actual.' });
@@ -561,6 +568,25 @@ include '../includes/header.php';
 
         return true;
     }
+
+    // Inicialización
+    actualizarHora();
+
+    document.getElementById('modalEnfermedad').addEventListener('click', function (e) {
+        if (e.target === this) cerrarModal();
+    });
+
+    // API pública del módulo — solo expone lo que el HTML necesita invocar
+    return {
+        abrirModalCompletar,
+        cerrarModal,
+        submitCompletarCita,
+        onCambioEstadoListado,
+        onCambioEstadoFormulario,
+        actualizarHora,
+        validarFormulario,
+    };
+})();
 </script>
 
 <?php include '../includes/footer.php'; ?>
