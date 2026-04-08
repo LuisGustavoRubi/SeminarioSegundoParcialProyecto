@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once '../includes/config.php';
 
 class CitasController
@@ -66,9 +68,9 @@ class CitasController
         );
 
         $enfNullable = $enfermedad_id > 0 ? $enfermedad_id : null;
-
+        
         $stmt->bind_param(
-            'iissiiiissssiiisss',
+            'iissiiiissssiissss',
             $datos['cita_id'],
             $usuario_id,
             $datos['tipo_cambio'],
@@ -196,8 +198,7 @@ class CitasController
                 $intervaloSeg = 30 * 60;
                 $stmt = $this->conn->prepare(
                     "SELECT id FROM citas
-                     WHERE medico_id = ? AND fecha = ? AND estado != 'cancelada'
-                     AND ABS(TIME_TO_SEC(TIMEDIFF(hora, ?))) < ?"
+                     WHERE medico_id = ? AND fecha = ? AND estado != 'cancelada' AND ABS(TIME_TO_SEC(TIMEDIFF(hora, ?))) < ?"
                 );
                 $stmt->bind_param('issi', $medico_id, $fecha, $hora, $intervaloSeg);
                 $stmt->execute();
@@ -234,8 +235,8 @@ class CitasController
                     $chk->execute();
                     $ownCheck = $chk->get_result()->fetch_assoc();
                     if (!$ownCheck || $ownCheck['medico_id'] != $this->miMedicoId()) {
-                        $_SESSION['error'] = 'No tiene permisos para modificar esta cita.';
-                        header('Location: ../pages/citas.php');
+                        $_SESSION['error'] = 'No tiene permiso para modificar esta cita.';
+                        header("Location: ../pages/citas.php?action=edit&id=$id");
                         exit();
                     }
                 }
@@ -254,9 +255,7 @@ class CitasController
                 $intervaloSeg = 30 * 60;
                 $chkHorario = $this->conn->prepare(
                     "SELECT id FROM citas
-                     WHERE medico_id = ? AND fecha = ? AND estado != 'cancelada'
-                     AND ABS(TIME_TO_SEC(TIMEDIFF(hora, ?))) < ?
-                     AND id != ?"
+                     WHERE medico_id = ? AND fecha = ? AND estado != 'cancelada' AND ABS(TIME_TO_SEC(TIMEDIFF(hora, ?))) < ? AND id != ?"
                 );
                 $chkHorario->bind_param('issii', $medico_id, $fecha, $hora, $intervaloSeg, $id);
                 $chkHorario->execute();
@@ -269,8 +268,8 @@ class CitasController
                 }
 
                 $tipo_cambio = $this->determinarTipoCambio(
-                    ['fecha' => $citaAnterior['fecha'], 'hora' => $citaAnterior['hora'], 'estado' => $citaAnterior['estado']],
-                    ['fecha' => $fecha,                 'hora' => $hora,                 'estado' => $estado]
+                    $citaAnterior,
+                    ['fecha' => $fecha, 'hora' => $hora, 'estado' => $estado]
                 );
 
                 $enfermedad_id = intval($_POST['enfermedad_id'] ?? 0);
@@ -283,7 +282,7 @@ class CitasController
                     'cita_id'      => $id,
                     'tipo_cambio'  => $tipo_cambio,
                     'observacion'  => $observacion,
-                    'enfermedad_id'=> $enfermedad_id,
+                    'enfermedad_id' => $enfermedad_id,
                     'localidad_id' => $localidad_id,
                     'ant_paciente' => $citaAnterior['paciente_id'],
                     'ant_medico'   => $citaAnterior['medico_id'],
@@ -303,35 +302,16 @@ class CitasController
                 if ($estado === 'completada' && !empty($med_ids)) {
                     $this->insertarMedicamentosHistorial($historial_id, $med_ids);
                     $this->descontarStock(intval($localidad_id), $med_ids);
-
-                    $delStmt = $this->conn->prepare("DELETE FROM cita_medicamentos WHERE cita_id = ?");
-                    $delStmt->bind_param('i', $id);
-                    $delStmt->execute();
-
-                    $insStmt = $this->conn->prepare("INSERT INTO cita_medicamentos (cita_id, medicamento_id) VALUES (?, ?)");
-                    foreach ($med_ids as $mid) {
-                        $insStmt->bind_param('ii', $id, $mid);
-                        $insStmt->execute();
-                    }
                 }
 
-                // UPDATE con prepared statement
-                $enfermedad_id_sql = ($estado === 'completada' && $enfermedad_id > 0) ? $enfermedad_id : null;
-
-                $stmtUpd = $this->conn->prepare(
-                    "UPDATE citas
-                     SET paciente_id = ?, medico_id = ?, localidad_id = ?,
-                         fecha = ?, hora = ?, motivo = ?, estado = ?,
-                         enfermedad_id = COALESCE(?, enfermedad_id)
-                     WHERE id = ?"
-                );
-                $stmtUpd->bind_param(
-                    'iiissssi i',
-                    $paciente_id, $medico_id, $localidad_id,
-                    $fecha, $hora, $motivo, $estado,
-                    $enfermedad_id_sql,
-                    $id
-                );
+                // Incluir enfermedad_id en el UPDATE cuando el estado pasa a completada
+                if ($estado === 'completada' && $enfermedad_id > 0) {
+                    $stmtUpd = $this->conn->prepare("UPDATE citas SET paciente_id = ?, medico_id = ?, localidad_id = ?, fecha = ?, hora = ?, motivo = ?, estado = ?, enfermedad_id = ? WHERE id = ?");
+                    $stmtUpd->bind_param('iiissssii', $paciente_id, $medico_id, $localidad_id, $fecha, $hora, $motivo, $estado, $enfermedad_id, $id);
+                } else {
+                    $stmtUpd = $this->conn->prepare("UPDATE citas SET paciente_id = ?, medico_id = ?, localidad_id = ?, fecha = ?, hora = ?, motivo = ?, estado = ? WHERE id = ?");
+                    $stmtUpd->bind_param('iiissssi', $paciente_id, $medico_id, $localidad_id, $fecha, $hora, $motivo, $estado, $id);
+                }
 
                 if ($stmtUpd->execute()) {
                     $_SESSION['success'] = 'Cita actualizada exitosamente';
@@ -369,7 +349,7 @@ class CitasController
                 'cita_id'      => $id,
                 'tipo_cambio'  => 'cancelacion',
                 'observacion'  => 'Cita cancelada',
-                'enfermedad_id'=> 0,
+                'enfermedad_id' => 0,
                 'localidad_id' => $cita['localidad_id'],
                 'ant_paciente' => $cita['paciente_id'],
                 'ant_medico'   => $cita['medico_id'],
@@ -402,7 +382,7 @@ class CitasController
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'changeStatus') {
             $id            = intval($_POST['id']           ?? 0);
             $nuevo_estado  = $_POST['estado']              ?? '';
-            $enfermedad_id = intval($_POST['enfermedad_id']?? 0);
+            $enfermedad_id = intval($_POST['enfermedad_id'] ?? 0);
             $med_ids = !empty($_POST['medicamentos'])
                 ? array_filter(array_map('intval', explode(',', $_POST['medicamentos'])))
                 : [];
@@ -416,7 +396,7 @@ class CitasController
                     $chk->execute();
                     $ownCheck = $chk->get_result()->fetch_assoc();
                     if (!$ownCheck || $ownCheck['medico_id'] != $this->miMedicoId()) {
-                        $_SESSION['error'] = 'No tiene permiso para modificar esta cita.';
+                        $_SESSION['error'] = 'No tiene permiso para cambiar el estado de esta cita.';
                         header('Location: ../pages/citas.php');
                         exit();
                     }
@@ -428,7 +408,7 @@ class CitasController
                 $citaAnterior = $stmtCita->get_result()->fetch_assoc();
 
                 if ($citaAnterior && in_array($citaAnterior['estado'], ['cancelada', 'completada'])) {
-                    $_SESSION['error'] = 'No se puede modificar una cita ' . $citaAnterior['estado'] . '.';
+                    $_SESSION['error'] = 'No se puede cambiar el estado de una cita ' . $citaAnterior['estado'] . '.';
                     header('Location: ../pages/citas.php');
                     exit();
                 }
@@ -440,13 +420,11 @@ class CitasController
                 }
 
                 if ($citaAnterior && $citaAnterior['estado'] !== $nuevo_estado) {
-                    $tipo_cambio = $nuevo_estado === 'cancelada' ? 'cancelacion' : 'modificacion';
-
                     $historial_id = $this->insertarHistorial([
                         'cita_id'      => $id,
-                        'tipo_cambio'  => $tipo_cambio,
-                        'observacion'  => 'Cambio de estado desde el listado',
-                        'enfermedad_id'=> $enfermedad_id,
+                        'tipo_cambio'  => ($nuevo_estado === 'cancelada' ? 'cancelacion' : 'modificacion'),
+                        'observacion'  => "Cambio de estado a $nuevo_estado",
+                        'enfermedad_id' => $enfermedad_id,
                         'localidad_id' => $citaAnterior['localidad_id'],
                         'ant_paciente' => $citaAnterior['paciente_id'],
                         'ant_medico'   => $citaAnterior['medico_id'],
@@ -465,32 +443,21 @@ class CitasController
                     if ($nuevo_estado === 'completada' && !empty($med_ids)) {
                         $this->insertarMedicamentosHistorial($historial_id, $med_ids);
                         $this->descontarStock(intval($citaAnterior['localidad_id']), $med_ids);
-
-                        $delStmt = $this->conn->prepare("DELETE FROM cita_medicamentos WHERE cita_id = ?");
-                        $delStmt->bind_param('i', $id);
-                        $delStmt->execute();
-
-                        $insStmt = $this->conn->prepare("INSERT INTO cita_medicamentos (cita_id, medicamento_id) VALUES (?, ?)");
-                        foreach ($med_ids as $mid) {
-                            $insStmt->bind_param('ii', $id, $mid);
-                            $insStmt->execute();
-                        }
                     }
 
+                    // Incluir enfermedad_id en el UPDATE cuando el estado pasa a completada
                     if ($nuevo_estado === 'completada') {
-                        $stmtUpd = $this->conn->prepare(
-                            "UPDATE citas SET estado = ?, enfermedad_id = ? WHERE id = ?"
-                        );
-                        $stmtUpd->bind_param('sii', $nuevo_estado, $enfermedad_id, $id);
+                        $stmt = $this->conn->prepare("UPDATE citas SET estado = ?, enfermedad_id = ? WHERE id = ?");
+                        $stmt->bind_param('sii', $nuevo_estado, $enfermedad_id, $id);
                     } else {
-                        $stmtUpd = $this->conn->prepare("UPDATE citas SET estado = ? WHERE id = ?");
-                        $stmtUpd->bind_param('si', $nuevo_estado, $id);
+                        $stmt = $this->conn->prepare("UPDATE citas SET estado = ? WHERE id = ?");
+                        $stmt->bind_param('si', $nuevo_estado, $id);
                     }
 
-                    if ($stmtUpd->execute()) {
-                        $_SESSION['success'] = 'Estado actualizado exitosamente';
+                    if ($stmt->execute()) {
+                        $_SESSION['success'] = "Estado actualizado a $nuevo_estado";
                     } else {
-                        $_SESSION['error'] = 'Error al actualizar el estado';
+                        $_SESSION['error'] = 'Error al actualizar estado';
                     }
                 }
             }

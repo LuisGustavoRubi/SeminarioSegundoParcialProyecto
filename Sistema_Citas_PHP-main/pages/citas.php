@@ -407,12 +407,13 @@ const CitasUI = (() => {
     }
 
     // fetchMedicamentosPorLocalidad — antes: cargarMedicamentosPorLocalidad(id)
+    // Usa la URL con el path correcto a /pages/
     async function fetchMedicamentosPorLocalidad(localidadId) {
         try {
             const respuesta   = await fetch(`citas.php?action=getMedicamentos&localidad_id=${localidadId}`);
             const medicamentos = await respuesta.json();
             const select      = document.getElementById('modal_medicamento_id');
-
+ 
             if (!medicamentos.length) {
                 select.innerHTML = '<option disabled>Sin medicamentos disponibles en esta localidad</option>';
             } else {
@@ -501,10 +502,15 @@ const CitasUI = (() => {
         }
     }
 
+    // actualizarHora con guard para que no falle cuando los selects
     function actualizarHora() {
-        const h = document.getElementById('hora_h').value;
-        const m = document.getElementById('hora_m').value;
-        document.getElementById('hora').value = h + ':' + m;
+        const horaH = document.getElementById('hora_h');
+        const horaM = document.getElementById('hora_m');
+        const hora  = document.getElementById('hora');
+        // Solo ejecutar si los tres elementos existen
+        if (horaH && horaM && hora) {
+            hora.value = horaH.value + ':' + horaM.value;
+        }
     }
 
     function validarFormulario() {
