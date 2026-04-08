@@ -42,6 +42,16 @@
             });
         }
 
+        <?php if (isset($_SESSION['auth_message'])): ?>
+            Swal.fire({
+                icon: 'warning',
+                title: 'Acceso restringido',
+                text: <?php echo json_encode($_SESSION['auth_message']); ?>,
+                confirmButtonColor: '#0d6efd'
+            });
+            <?php unset($_SESSION['auth_message']); ?>
+        <?php endif; ?>
+
         <?php if (isset($_SESSION['success'])): ?>
             Swal.fire({
                 icon: 'success',

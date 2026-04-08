@@ -1,5 +1,7 @@
 <?php
 require_once '../includes/config.php';
+require_once '../includes/auth.php';
+requireLogin();
 require_once '../controllers/MedicosController.php';
 
 $esJefe = ($_SESSION['rol'] ?? '') === 'jefe';

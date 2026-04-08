@@ -1,13 +1,7 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) session_start();
-
-if (($_SESSION['rol'] ?? '') !== 'jefe') {
-    $_SESSION['error'] = 'No tiene permiso para acceder a la gestión de usuarios.';
-    header('Location: ../index.php');
-    exit();
-}
-
 require_once '../includes/config.php';
+require_once '../includes/auth.php';
+requireRol(1);
 require_once '../controllers/usuariosController.php';
 
 $controller = new UsuarioController($conn);

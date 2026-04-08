@@ -21,7 +21,7 @@ class LoginController
 
             // Si usuario existe
             $stmt = $this->conn->prepare("
-                SELECT u.id, u.usuario, u.contrasena, u.estado, u.medico_id, r.nombre AS rol FROM usuarios u
+                SELECT u.id, u.usuario, u.contrasena, u.estado, u.medico_id, u.rol_id, r.nombre AS rol FROM usuarios u
                 INNER JOIN roles r ON u.rol_id = r.id
                 WHERE u.usuario = ?
             ");
@@ -69,6 +69,7 @@ class LoginController
             // Guardar datos de usuario logeado
             $_SESSION['usuario']   = $user['usuario'];
             $_SESSION['rol']       = $user['rol'];
+            $_SESSION['rol_id']    = (int) $user['rol_id'];
             $_SESSION['user_id']   = $user['id'];
             $_SESSION['medico_id'] = $user['medico_id']; // null si es jefe
 

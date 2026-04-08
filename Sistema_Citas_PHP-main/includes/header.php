@@ -121,6 +121,7 @@
                                 Médicos
                             </a>
                         </li>
+                        <?php if (($_SESSION['rol_id'] ?? 0) === 1): ?>
                         <li class="nav-item">
                             <a class="nav-link <?php echo isset($current_page) && $current_page == 'medicamentos' ? 'active' : ''; ?> rounded"
                                 href="<?php echo basename($_SERVER['PHP_SELF']) == 'medicamentos.php' ? '#' : (basename($_SERVER['PHP_SELF']) == 'index.php' ? 'pages/medicamentos.php' : 'medicamentos.php'); ?>">
@@ -128,6 +129,7 @@
                                 Medicamentos
                             </a>
                         </li>
+                        <?php endif; ?>
                         <li class="nav-item">
                             <a class="nav-link <?php echo isset($current_page) && $current_page == 'citas' ? 'active' : ''; ?> rounded"
                                 href="<?php echo basename($_SERVER['PHP_SELF']) == 'citas.php' ? '#' : (basename($_SERVER['PHP_SELF']) == 'index.php' ? 'pages/citas.php' : 'citas.php'); ?>">

@@ -1,12 +1,7 @@
 <?php
 require_once 'includes/config.php';
-
-session_start();
-
-if (!isset($_SESSION['usuario'])) {
-    header('Location: pages/login.php');
-    exit;
-}
+require_once 'includes/auth.php';
+requireLogin();
 
 
 $total_pacientes = $conn->query("SELECT COUNT(*) as total FROM pacientes")->fetch_assoc()['total'];

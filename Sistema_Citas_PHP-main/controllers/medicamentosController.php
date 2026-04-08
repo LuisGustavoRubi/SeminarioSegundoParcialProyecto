@@ -13,6 +13,11 @@ class MedicamentosController
 
     public function handleRequest()
     {
+        if (($_SESSION['rol_id'] ?? 0) !== 1) {
+            header('Location: ../index.php');
+            exit();
+        }
+
         // Crear egisto
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'create') {
 
