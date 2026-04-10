@@ -59,11 +59,6 @@ include '../includes/headerLogin.php';
                                             <button type="submit" class="form-control btn btn-submit rounded submit px-3">Acceder</button>
                                         </div>
 
-                                        <div class="form-group d-md-flex justify-content-between align-items-center">
-                                            <div class="w-100 text-center">
-                                                <a href="https://www.memegenerator.es/meme/31583445">Olvidaste tu contraseña?</a>
-                                            </div>
-                                        </div>
                                     </form>
 
                                     <p class="text-center mt-4 mb-0 text-muted" style="font-size:0.85rem;">Cuenta inactiva? Inicia sesión con tu contraseña temporal para activarla.</p>
